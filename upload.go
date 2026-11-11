@@ -100,9 +100,9 @@ func buildTelemetry(run *Run, s Session, ch Character, items map[string]Item) te
 		CharacterID:        ch.ID,
 		CharacterName:      ch.Name,
 		Success:            run.Success,
-		// shortcut: cans cannot be observed without reading the screen. The site's former code classifies
-		// the run as "all cans looted" when both numbers are equal: 1/0 avoids that false
-		// statement. Replace with a session setting if the resulting classification is not suitable.
+		// shortcut: cans cannot be observed without reading the screen, so fixed values are sent.
+		// With 1/0 the site shows the run as "Bioadaptive and some cans" (seen on a test run); the values
+		// that give "not disclosed" are not known. Replace with a session setting once they are.
 		CansSpawned: 1,
 		CansLooted:  0,
 		LootGained:  toLoot(run.Gained, items),

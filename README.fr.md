@@ -6,7 +6,7 @@ Envoie automatiquement vos runs d'Abysse d'EVE Online sur [Abyss Tracker](https:
 Le programme s'appelle `abyssup`.
 Il ne touche jamais au client EVE : il lit seulement le journal de discussion Local qu'EVE écrit sur le disque, et le presse-papiers de Windows.
 
-> **État : en cours de développement.** L'envoi n'est pas encore prouvé de bout en bout, voir [État des vérifications](#état-des-vérifications).
+> **État : en cours de développement.** L'envoi fonctionne. La lecture du presse-papiers Windows n'a pas encore été testée sur une vraie machine, voir [État des vérifications](#état-des-vérifications).
 
 ## Utilisation
 
@@ -85,14 +85,10 @@ Vérifié :
 - détection d'un run sur un vrai journal Local français : personnage, entrée, sortie, durée à la seconde ;
 - le jeton Abyss Tracker est accepté dans l'en-tête `X-API-KEY` ;
 - `fits/list` renvoie les fits du compte avec leur vaisseau ;
-- `POST /v1/abyss-tracker/telemetry` répond `Error: false` avec un `RunId`.
-
-**Bloquant** : les deux runs de test créés ainsi n'apparaissent ni sur le site, ni dans `get-runs`,
-ni dans `runs/{id}`. L'équipe d'EVE Workbench a confirmé que l'endpoint est ouvert aux outils tiers et que
-`PUBLIC` est la bonne valeur de visibilité (toute autre valeur publie en anonyme), mais elle ne voit pas
-ces runs dans sa base. Elle cherche de son côté.
+- un run de test envoyé par le code d'envoi du programme apparaît sur Abyss Tracker avec la bonne météo, le bon tier, la bonne coque, le bon fit, la bonne durée et le bon butin ;
+- les filaments consommés, envoyés dans les objets perdus, sont comptés une seule fois.
 
 Reste à confirmer :
 
-- `cansSpawned` / `cansLooted` sont envoyés à 1 / 0 pour que le run ne soit pas déclaré « tous les conteneurs pillés » ;
+- `cansSpawned` / `cansLooted` sont envoyés à 1 / 0, ce que le site affiche comme « Bioadaptive and some cans ». Les valeurs qui donnent « non précisé » ne sont pas encore connues ;
 - lecture du presse-papiers et notifications Windows : compilées, jamais exécutées sur un vrai Windows.

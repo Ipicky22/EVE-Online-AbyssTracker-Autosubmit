@@ -8,7 +8,7 @@
 程序名为 `abyssup`。
 它从不操作 EVE 客户端：只读取 EVE 写入硬盘的本地频道聊天日志，以及 Windows 剪贴板。
 
-> **状态：开发中。** 上传功能尚未得到完整验证，见[验证状态](#验证状态)。
+> **状态：开发中。** 上传功能已可用。Windows 剪贴板读取尚未在真实电脑上测试，见[验证状态](#验证状态)。
 
 ## 使用方法
 
@@ -86,13 +86,10 @@ GOOS=windows go build -ldflags "-H=windowsgui" -o abyssup.exe .
 - 用真实的法语本地频道日志检测深渊记录：角色、进入、离开、精确到秒的时长；
 - Abyss Tracker 令牌可通过 `X-API-KEY` 请求头使用；
 - `fits/list` 返回账号的装配及其舰船；
-- `POST /v1/abyss-tracker/telemetry` 返回 `Error: false` 和一个 `RunId`。
-
-**阻塞问题**：这样创建的两条测试记录既不出现在网站上，也不出现在 `get-runs` 和 `runs/{id}` 中。
-EVE Workbench 团队确认该接口对第三方工具开放，并且 `PUBLIC` 是正确的可见性取值（其他任何取值都会匿名发布），
-但他们在数据库中看不到这些记录，正在自行排查。
+- 通过程序自身的上传代码发送的测试记录出现在 Abyss Tracker 上，天气、等级、舰船级别、装配、时长和战利品均正确；
+- 消耗的纤维放在损失物品中发送，只被计算一次。
 
 仍待确认：
 
-- `cansSpawned` / `cansLooted` 以 1 / 0 发送，以免记录被标记为“已搜刮全部残骸”；
+- `cansSpawned` / `cansLooted` 以 1 / 0 发送，网站显示为“Bioadaptive and some cans”。哪些取值对应“未说明”尚不清楚；
 - Windows 剪贴板读取和通知：已编译，从未在真实的 Windows 上运行过。

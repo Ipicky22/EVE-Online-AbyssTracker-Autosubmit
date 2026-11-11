@@ -8,7 +8,7 @@ Sendet deine Abyssal-Deadspace-Runs aus EVE Online automatisch an [Abyss Tracker
 Das Programm heißt `abyssup`.
 Es greift nie in den EVE-Client ein: Es liest nur das Lokal-Chatlog, das EVE auf die Festplatte schreibt, und die Windows-Zwischenablage.
 
-> **Status: in Arbeit.** Das Hochladen ist noch nicht durchgängig nachgewiesen, siehe [Prüfstand](#prüfstand).
+> **Status: in Arbeit.** Das Hochladen funktioniert. Das Lesen der Windows-Zwischenablage wurde noch nicht auf einem echten Rechner getestet, siehe [Prüfstand](#prüfstand).
 
 ## Verwendung
 
@@ -87,14 +87,10 @@ Geprüft:
 - Run-Erkennung an einem echten französischen Lokal-Chatlog: Charakter, Eintritt, Austritt, Dauer sekundengenau;
 - das Abyss-Tracker-Token wird im Header `X-API-KEY` akzeptiert;
 - `fits/list` liefert die Fittings des Kontos mit ihrem Schiff;
-- `POST /v1/abyss-tracker/telemetry` antwortet mit `Error: false` und einer `RunId`.
-
-**Blockierend**: Die beiden so erzeugten Test-Runs erscheinen weder auf der Website noch in `get-runs`
-noch in `runs/{id}`. Das Team von EVE Workbench hat bestätigt, dass der Endpunkt für Drittprogramme offen ist
-und dass `PUBLIC` der richtige Wert für die Sichtbarkeit ist (jeder andere Wert veröffentlicht anonym), sieht die
-Runs aber nicht in seiner Datenbank. Es untersucht das Problem auf seiner Seite.
+- ein Test-Run, der über den Upload-Code des Programms gesendet wurde, erscheint auf Abyss Tracker mit richtigem Wetter, richtiger Stufe, Schiffsklasse, Fitting, Dauer und Beute;
+- die verbrauchten Filamente, die in den verlorenen Gegenständen gesendet werden, werden nur einmal gezählt.
 
 Noch zu bestätigen:
 
-- `cansSpawned` / `cansLooted` werden als 1 / 0 gesendet, damit der Run nicht als „alle Container geplündert“ gilt;
+- `cansSpawned` / `cansLooted` werden als 1 / 0 gesendet, was die Website als „Bioadaptive and some cans“ anzeigt. Welche Werte „nicht angegeben“ ergeben, ist noch nicht bekannt;
 - Lesen der Windows-Zwischenablage und Benachrichtigungen: kompiliert, nie auf einem echten Windows ausgeführt.

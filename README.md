@@ -6,7 +6,7 @@ Submits your EVE Online Abyssal Deadspace runs to [Abyss Tracker](https://abysst
 The program is called `abyssup`.
 It never touches the EVE client: it only reads the Local chat log that EVE writes to disk, and the Windows clipboard.
 
-> **Status: work in progress.** Uploading is not proven end to end yet, see [Verification status](#verification-status).
+> **Status: work in progress.** Uploading works. Reading the Windows clipboard has not been tested on a real machine yet, see [Verification status](#verification-status).
 
 ## Usage
 
@@ -84,14 +84,10 @@ Verified:
 - run detection from a real French Local chat log: character, entry, exit, duration to the second;
 - the Abyss Tracker token is accepted in the `X-API-KEY` header;
 - `fits/list` returns the account's fits with their ship;
-- `POST /v1/abyss-tracker/telemetry` answers `Error: false` with a `RunId`.
-
-**Blocking**: the two test runs created this way show up neither on the site, nor in `get-runs`,
-nor in `runs/{id}`. The EVE Workbench team confirmed the endpoint is open to third-party tools and that
-`PUBLIC` is the right privacy value (any other value publishes anonymously), but does not see the runs
-in their database. They are investigating on their side.
+- a test run sent through the program's own upload code shows up on Abyss Tracker with the right weather, tier, hull, fit, duration and loot;
+- the consumed filaments, sent in the lost items, are counted once.
 
 Still to confirm:
 
-- `cansSpawned` / `cansLooted` are sent as 1 / 0 so the run is not declared as "all cans looted";
+- `cansSpawned` / `cansLooted` are sent as 1 / 0, which the site shows as "Bioadaptive and some cans". The values that give "not disclosed" are not known yet;
 - Windows clipboard reading and notifications: compiled, never run on a real Windows machine.
