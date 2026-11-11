@@ -25,13 +25,16 @@ type Item struct {
 	Name   string
 }
 
+// itemLangs are the client languages whose item names can be resolved, tried in this order.
+var itemLangs = []string{"en", "fr", "de", "ru", "zh"}
+
 // resolveNames converts names shown by the client into EVE types.
-// The client may be in English or French: try English first, then French for the rest.
+// The client language is not known: try English first, then each other language for what is left.
 // Names that cannot be found are absent from the result.
 func resolveNames(names []string) (map[string]Item, error) {
 	found := map[string]Item{}
 	missing := names
-	for _, lang := range []string{"en", "fr"} {
+	for _, lang := range itemLangs {
 		if len(missing) == 0 {
 			break
 		}

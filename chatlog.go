@@ -10,7 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf16"
+	"unicode/utf8"
 )
 
 // The EVE client writes the Local channel log to disk, one line per system change:
@@ -27,18 +29,36 @@ type LocalEvent struct {
 	Abyss  bool
 }
 
+// clientLang is the wording one EVE client language uses in the Local log.
+type clientLang struct {
+	sender  string // pseudo-sender of system messages; written by the client, a player cannot fake it
+	changed string // sentence announcing the new system, before the colon
+	unknown string // name shown instead of a system name inside the Abyss
+}
+
+// shortcut: only the French line and "Inconnu" were checked against a real log. The other senders and
+// sentences come from public EVE log parsers; the other "unknown" words are assumed.
+// A wrong word only means runs are not detected in that language: confirm each with a real log.
+var clientLangs = []clientLang{
+	{"EVE System", "Channel changed to Local", "Unknown"},
+	{"Système EVE", "Canal changé en Local", "Inconnu"},
+	{"EVE-System", "Chatkanal geändert zu Lokal", "Unbekannt"},
+	{"Система EVE", "Канал изменен на Локальный", "Неизвестно"},
+	{"EVE系统", "频道更换为本地", "未知"},
+}
+
 var (
-	// The French client puts a non-breaking space before the colon and a star after the name.
-	localLine = regexp.MustCompile(`^\x{feff}?\[ (\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}) \] (?:EVE System|Système EVE) > .*Local[\s\x{a0}]*:[\s\x{a0}]*(.+?)\*?\s*$`)
+	localLine = regexp.MustCompile(`^\x{feff}?\[ (\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}) \] (.+?) > (.*)$`)
 	listener  = regexp.MustCompile(`(?m)^\s*Listener:\s+(.+?)\s*$`)
 	// Local_YYYYMMDD_HHMMSS_<character ID>.txt
 	localFile = regexp.MustCompile(`^Local_\d{8}_\d{6}_(\d+)\.txt$`)
 )
 
-// The Abyss has no system name in Local.
-// shortcut: "Inconnu" checked against a French log; "Unknown" assumed for the English client,
-// to be confirmed with a real English log.
-var abyssNames = []string{"Inconnu", "Unknown"}
+// squash drops every kind of space and lowercases, so that sentences compare the same whether the
+// client writes a normal space, a non-breaking one, or none at all around the colon.
+func squash(s string) string {
+	return strings.ToLower(strings.Join(strings.FieldsFunc(s, unicode.IsSpace), ""))
+}
 
 func parseLocalLine(line string) (LocalEvent, bool) {
 	m := localLine.FindStringSubmatch(line)
@@ -49,11 +69,25 @@ func parseLocalLine(line string) (LocalEvent, bool) {
 	if err != nil {
 		return LocalEvent{}, false
 	}
-	e := LocalEvent{At: at, System: m[2]}
-	for _, n := range abyssNames {
-		e.Abyss = e.Abyss || strings.EqualFold(e.System, n)
+	// The system name follows the last colon; the Chinese client writes a full-width one.
+	msg := m[3]
+	cut := strings.LastIndexAny(msg, ":：")
+	if cut < 0 {
+		return LocalEvent{}, false
 	}
-	return e, true
+	_, size := utf8.DecodeRuneInString(msg[cut:])
+	// Non-English clients mark names kept in English with a trailing star.
+	name := strings.TrimSuffix(strings.TrimFunc(msg[cut+size:], unicode.IsSpace), "*")
+	for _, l := range clientLangs {
+		if m[2] == l.sender && squash(msg[:cut]) == squash(l.changed) && name != "" {
+			e := LocalEvent{At: at, System: name}
+			for _, u := range clientLangs {
+				e.Abyss = e.Abyss || strings.EqualFold(name, u.unknown)
+			}
+			return e, true
+		}
+	}
+	return LocalEvent{}, false
 }
 
 // defaultChatlogDir returns the folder where EVE stores its chat logs.

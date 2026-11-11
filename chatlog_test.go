@@ -21,6 +21,17 @@ func TestParseLocalLine(t *testing.T) {
 		// English client.
 		{"\ufeff[ 2026.11.11 12:56:51 ] EVE System > Channel changed to Local : Jita", LocalEvent{At: at, System: "Jita"}, true},
 		{"\ufeff[ 2026.11.11 12:56:51 ] EVE System > Channel changed to Local : Unknown", LocalEvent{At: at, System: "Unknown", Abyss: true}, true},
+		// German, Russian and Chinese clients: built from the wording public log parsers use, not from real logs.
+		{"\ufeff[ 2026.11.11 12:56:51 ] EVE-System > Chatkanal geändert zu Lokal : Jita*", LocalEvent{At: at, System: "Jita"}, true},
+		{"\ufeff[ 2026.11.11 12:56:51 ] EVE-System > Chatkanal geändert zu Lokal : Unbekannt", LocalEvent{At: at, System: "Unbekannt", Abyss: true}, true},
+		{"\ufeff[ 2026.11.11 12:56:51 ] Система EVE > Канал изменен на Локальный: Jita*", LocalEvent{At: at, System: "Jita"}, true},
+		{"\ufeff[ 2026.11.11 12:56:51 ] Система EVE > Канал изменен на Локальный: Неизвестно", LocalEvent{At: at, System: "Неизвестно", Abyss: true}, true},
+		// The Chinese client writes a full-width colon and no spaces.
+		{"\ufeff[ 2026.11.11 12:56:51 ] EVE系统 > 频道更换为本地：吉他", LocalEvent{At: at, System: "吉他"}, true},
+		{"\ufeff[ 2026.11.11 12:56:51 ] EVE系统 > 频道更换为本地：未知", LocalEvent{At: at, System: "未知", Abyss: true}, true},
+		// Another system message is not a system change, even with a colon in it.
+		{"\ufeff[ 2026.11.11 12:56:51 ] EVE System > Connection lost: Jita", LocalEvent{}, false},
+		{"\ufeff[ 2026.11.11 12:56:51 ] EVE System > Channel changed to Local : ", LocalEvent{}, false},
 		// A player typing the same sentence is not the system.
 		{"\ufeff[ 2026.11.11 12:56:51 ] Some Pilot > Channel changed to Local : Unknown", LocalEvent{}, false},
 		{"          Channel Name:    Local", LocalEvent{}, false},

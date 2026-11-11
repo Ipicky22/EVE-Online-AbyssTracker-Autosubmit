@@ -8,14 +8,26 @@ import (
 
 var verb = regexp.MustCompile(`%[a-z]`)
 
-// Both languages must exist for every key and take the same arguments in the same order.
+// Every language must have every text, with the same arguments in the same order as English.
 func TestMessagesAreComplete(t *testing.T) {
-	for key, m := range messages {
-		if m[0] == "" || m[1] == "" {
-			t.Errorf("%s: missing translation", key)
+	if len(messages) != len(langs) {
+		t.Fatalf("%d message tables for %d languages", len(messages), len(langs))
+	}
+	for _, lang := range langs {
+		if langNames[lang] == "" {
+			t.Errorf("%s: no display name", lang)
 		}
-		if en, fr := verb.FindAllString(m[0], -1), verb.FindAllString(m[1], -1); !slices.Equal(en, fr) {
-			t.Errorf("%s: arguments differ, en=%v fr=%v", key, en, fr)
+		table := messages[lang]
+		if len(table) != len(messagesEN) {
+			t.Errorf("%s: %d texts, English has %d", lang, len(table), len(messagesEN))
+		}
+		for key, en := range messagesEN {
+			if table[key] == "" {
+				t.Errorf("%s: %s is missing", lang, key)
+			}
+			if a, b := verb.FindAllString(en, -1), verb.FindAllString(table[key], -1); !slices.Equal(a, b) {
+				t.Errorf("%s: %s takes %v, English takes %v", lang, key, b, a)
+			}
 		}
 	}
 }
@@ -24,7 +36,7 @@ func TestTr(t *testing.T) {
 	if got := tr("fr", "sessionStarted", "Dark", 0); got != "Session en cours : Dark T0. Copie ta soute avant le premier run." {
 		t.Errorf("fr: %q", got)
 	}
-	if got := tr("de", "sessionEnded"); got != "Session ended." {
+	if got := tr("xx", "sessionEnded"); got != "Session ended." {
 		t.Errorf("unknown language must fall back to English, got %q", got)
 	}
 }

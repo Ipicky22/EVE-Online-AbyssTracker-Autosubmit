@@ -65,7 +65,7 @@ func (f *feed) expect(t *testing.T, complete, incomplete int) {
 		t.Fatalf("complete=%d incomplete=%d, want %d/%d", c, i, complete, incomplete)
 	}
 	for _, o := range f.out {
-		if _, ok := messages[o.Msg]; !ok && o.Msg != "" {
+		if _, ok := messagesEN[o.Msg]; !ok && o.Msg != "" {
 			t.Errorf("outcome message %q has no translation", o.Msg)
 		}
 	}

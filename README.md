@@ -1,5 +1,7 @@
 # EVE Online AbyssTracker Autosubmit
 
+**English** | [Français](README.fr.md) | [Deutsch](README.de.md) | [Русский](README.ru.md) | [中文](README.zh.md)
+
 Submits your EVE Online Abyssal Deadspace runs to [Abyss Tracker](https://abysstracker.com) automatically.
 The program is called `abyssup`.
 It never touches the EVE client: it only reads the Local chat log that EVE writes to disk, and the Windows clipboard.
@@ -17,8 +19,6 @@ It never touches the EVE client: it only reads the Local chat log that EVE write
 Runs are published as public.
 A run without a reliable cargo copy is not sent: it is stored in `incomplete/`.
 
-Both English and French EVE clients are supported; item names are sent in English.
-
 ## Setup (once)
 
 1. Create a token at `abysstracker.com/my-account/personal-access-tokens`.
@@ -27,7 +27,20 @@ Both English and French EVE clients are supported; item names are sent in Englis
 No EVE developer application and no character login are needed.
 EVE must log chat to file (it does by default).
 If your logs are not in `Documents\EVE\logs\Chatlogs`, set the folder in **Settings**.
-The interface is available in English and French (**Settings → Language**).
+
+## Languages
+
+| | English | French | German | Russian | Chinese |
+|---|---|---|---|---|---|
+| Interface (**Settings → Language**) | yes | yes | yes | yes | yes |
+| EVE client: item names | yes | yes | yes | yes | yes |
+| EVE client: Local chat log | assumed | checked | assumed | assumed | assumed |
+
+"Checked" means tested against a real log file. "Assumed" means the wording comes from public EVE log
+parsers and has not been tested against a real log of that language: run detection may not work.
+A Local log file in one of these languages is welcome, see [Known limits](#known-limits).
+The German, Russian and Chinese texts were not reviewed by a native speaker.
+Item names are always sent to Abyss Tracker in English.
 
 ## Options
 
@@ -55,7 +68,7 @@ The token is stored in plain text in your user profile, never in this repository
 - The log does not say when you dock. A system change discards the known cargo and asks for a new copy, but if you dock **without leaving the system** and forget to copy your cargo again, the next run's loot will be wrong.
 - A death is not detected when your clone is in the system the filament was used in.
 - One character at a time.
-- The `Unknown` name on an English client is assumed, not yet checked against a real English log.
+- The word shown for the Abyss in the Local log (`Unknown`, `Unbekannt`, `Неизвестно`, `未知`) is only checked for French (`Inconnu`). If it is wrong for your language, runs are simply not detected and nothing is sent.
 
 ## Development
 
