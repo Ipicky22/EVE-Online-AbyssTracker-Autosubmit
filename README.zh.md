@@ -91,5 +91,5 @@ GOOS=windows go build -ldflags "-H=windowsgui" -o abyssup.exe .
 
 仍待确认：
 
-- `cansSpawned` / `cansLooted` 以 1 / 0 发送，网站显示为“Bioadaptive and some cans”。哪些取值对应“未说明”尚不清楚；
+- Abyss Tracker 只把发送的记录归入两种战利品类型：“all cans”或“Bioadaptive and some cans”。会话中的一个复选框决定归入哪一种。发送相等的容器数量即可得到前者，这一点是推测，尚未在实际上传中见到；
 - Windows 剪贴板读取和通知：已编译，从未在真实的 Windows 上运行过。

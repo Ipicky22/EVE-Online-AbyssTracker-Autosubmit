@@ -21,6 +21,8 @@
   details { margin-top: 2rem; }
   summary { cursor: pointer; font-weight: 600; margin-bottom: .75rem; }
   small { font-weight: 400; opacity: .75; }
+  label.check { display: flex; gap: .5rem; align-items: baseline; font-weight: 400; }
+  label.check small { display: block; }
 </style>
 </head>
 <body>
@@ -55,6 +57,10 @@
       <option value="">{{.L.none}}</option>
       {{range .Fits}}<option value="{{.ID}}" {{if eq .ID $.S.FitID}}selected{{end}}>{{.Ship.Name}} — {{.Name}}</option>{{end}}
     </select>
+  </label>
+  <label class="check">
+    <input type="checkbox" name="all_cans" {{if .S.AllCans}}checked{{end}}>
+    <span>{{.L.allCans}} <small>{{.L.allCansHelp}}</small></span>
   </label>
   <button type="submit">{{if .Active}}{{.L.updateSession}}{{else}}{{.L.startSession}}{{end}}</button>
 </form>

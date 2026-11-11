@@ -10,6 +10,8 @@ var messagesFR = map[string]string{
 	"tier":          "Tier",
 	"hull":          "Coque",
 	"fit":           "Fit",
+	"allCans":       "Je pille tous les conteneurs",
+	"allCansHelp":   "Abyss Tracker classe les runs envoyés en « all cans » si la case est cochée, en « Bioadaptive and some cans » sinon.",
 	"fitNeedsToken": "renseigne ton jeton Abyss Tracker pour lister tes fits",
 	"none":          "Aucun",
 	"startSession":  "Démarrer la session",

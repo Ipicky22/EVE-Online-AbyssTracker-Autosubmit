@@ -89,5 +89,5 @@ Verified:
 
 Still to confirm:
 
-- `cansSpawned` / `cansLooted` are sent as 1 / 0, which the site shows as "Bioadaptive and some cans". The values that give "not disclosed" are not known yet;
+- Abyss Tracker files uploaded runs under two loot types only: "all cans", or "Bioadaptive and some cans". A session checkbox picks which. That the first one is obtained by sending equal can counts is assumed, not seen on an upload yet;
 - Windows clipboard reading and notifications: compiled, never run on a real Windows machine.

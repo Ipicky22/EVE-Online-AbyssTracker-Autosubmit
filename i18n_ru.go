@@ -11,6 +11,8 @@ var messagesRU = map[string]string{
 	"tier":          "Уровень",
 	"hull":          "Класс корабля",
 	"fit":           "Фит",
+	"allCans":       "Я собираю все контейнеры",
+	"allCansHelp":   "Abyss Tracker записывает отправленные прохождения как «all cans», если отмечено, иначе как «Bioadaptive and some cans».",
 	"fitNeedsToken": "укажите токен Abyss Tracker, чтобы увидеть свои фиты",
 	"none":          "Нет",
 	"startSession":  "Начать сессию",

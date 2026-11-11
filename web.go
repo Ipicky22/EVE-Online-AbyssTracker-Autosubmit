@@ -111,7 +111,7 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) handleStart(w http.ResponseWriter, r *http.Request) {
 	tier, _ := strconv.Atoi(r.FormValue("tier"))
-	s := Session{Weather: r.FormValue("weather"), Tier: tier, Hull: r.FormValue("hull")}
+	s := Session{Weather: r.FormValue("weather"), Tier: tier, Hull: r.FormValue("hull"), AllCans: r.FormValue("all_cans") != ""}
 	if !slices.Contains(weatherValues, s.Weather) || tier < 0 || tier >= len(tierNames) || !slices.Contains(hullValues, s.Hull) {
 		http.Error(w, "invalid session settings", http.StatusBadRequest)
 		return

@@ -31,6 +31,7 @@ type Session struct {
 	Weather    string
 	Tier       int
 	Hull       string
+	AllCans    bool // the player loots every can; see buildTelemetry
 	FitID      string
 	FitName    string
 	ShipName   string

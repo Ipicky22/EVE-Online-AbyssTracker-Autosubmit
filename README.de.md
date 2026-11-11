@@ -92,5 +92,5 @@ Geprüft:
 
 Noch zu bestätigen:
 
-- `cansSpawned` / `cansLooted` werden als 1 / 0 gesendet, was die Website als „Bioadaptive and some cans“ anzeigt. Welche Werte „nicht angegeben“ ergeben, ist noch nicht bekannt;
+- Abyss Tracker führt gesendete Runs nur unter zwei Beutearten: „all cans“ oder „Bioadaptive and some cans“. Ein Kästchen in der Sitzung wählt, welche. Dass die erste durch gleiche Containerzahlen entsteht, ist angenommen und noch bei keinem Upload beobachtet;
 - Lesen der Windows-Zwischenablage und Benachrichtigungen: kompiliert, nie auf einem echten Windows ausgeführt.

@@ -10,6 +10,8 @@ var messagesEN = map[string]string{
 	"tier":          "Tier",
 	"hull":          "Hull",
 	"fit":           "Fit",
+	"allCans":       "I loot every can",
+	"allCansHelp":   "Abyss Tracker files uploaded runs as \"all cans\" when ticked, as \"Bioadaptive and some cans\" otherwise.",
 	"fitNeedsToken": "set your Abyss Tracker token to list your fits",
 	"none":          "None",
 	"startSession":  "Start session",

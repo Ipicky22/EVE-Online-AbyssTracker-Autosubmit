@@ -90,5 +90,5 @@ Vérifié :
 
 Reste à confirmer :
 
-- `cansSpawned` / `cansLooted` sont envoyés à 1 / 0, ce que le site affiche comme « Bioadaptive and some cans ». Les valeurs qui donnent « non précisé » ne sont pas encore connues ;
+- Abyss Tracker ne classe les runs envoyés que dans deux types de butin : « all cans » ou « Bioadaptive and some cans ». Une case de la session choisit lequel. Que le premier s'obtienne en envoyant deux nombres de conteneurs égaux est supposé, pas encore constaté sur un envoi ;
 - lecture du presse-papiers et notifications Windows : compilées, jamais exécutées sur un vrai Windows.

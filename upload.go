@@ -100,15 +100,20 @@ func buildTelemetry(run *Run, s Session, ch Character, items map[string]Item) te
 		CharacterID:        ch.ID,
 		CharacterName:      ch.Name,
 		Success:            run.Success,
-		// shortcut: cans cannot be observed without reading the screen, so fixed values are sent.
-		// With 1/0 the site shows the run as "Bioadaptive and some cans" (seen on a test run); the values
-		// that give "not disclosed" are not known. Replace with a session setting once they are.
+		// Cans cannot be observed without reading the screen. Abyss Tracker files uploaded runs under two
+		// loot types only (confirmed by the EVE Workbench team): "all cans", or "Bioadaptive and some cans".
+		// The session says which one applies.
+		// shortcut: 1/0 gives "some cans" (seen on a test run); equal numbers giving "all cans" comes
+		// from the site's former code and has not been seen on a real upload yet.
 		CansSpawned: 1,
 		CansLooted:  0,
 		LootGained:  toLoot(run.Gained, items),
 		// The consumed filaments are part of the lost items, with their real count (3 for frigates):
 		// Abyss Tracker only adds the filament itself when it is missing (confirmed by the EVE Workbench team).
 		LootLost: toLoot(run.Lost, items),
+	}
+	if s.AllCans {
+		t.CansLooted = t.CansSpawned
 	}
 	if fil := items[filamentName(s)]; run.Success && fil.TypeID != 0 {
 		t.LootGained, t.LootLost = fixFilament(t.LootGained, t.LootLost, fil, filamentsUsed[s.Hull])

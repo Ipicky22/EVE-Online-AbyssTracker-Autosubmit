@@ -11,6 +11,8 @@ var messagesDE = map[string]string{
 	"tier":          "Stufe",
 	"hull":          "Schiffsklasse",
 	"fit":           "Fitting",
+	"allCans":       "Ich plündere alle Container",
+	"allCansHelp":   "Abyss Tracker führt gesendete Runs als „all cans“, wenn angekreuzt, sonst als „Bioadaptive and some cans“.",
 	"fitNeedsToken": "trage dein Abyss-Tracker-Token ein, um deine Fittings aufzulisten",
 	"none":          "Keines",
 	"startSession":  "Sitzung starten",

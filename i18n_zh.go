@@ -11,6 +11,8 @@ var messagesZH = map[string]string{
 	"tier":          "等级",
 	"hull":          "舰船级别",
 	"fit":           "装配",
+	"allCans":       "我会搜刮所有容器",
+	"allCansHelp":   "勾选后，Abyss Tracker 把发送的记录归为“all cans”，否则归为“Bioadaptive and some cans”。",
 	"fitNeedsToken": "填写 Abyss Tracker 令牌后可列出你的装配",
 	"none":          "无",
 	"startSession":  "开始会话",

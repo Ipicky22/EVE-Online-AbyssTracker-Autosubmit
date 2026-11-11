@@ -74,3 +74,15 @@ func TestBuildTelemetryFixesFilament(t *testing.T) {
 		t.Errorf("lost run: gained %v, lost %v", dead.LootGained, dead.LootLost)
 	}
 }
+
+func TestBuildTelemetryCans(t *testing.T) {
+	run := &Run{Success: true, Gained: Cargo{}, Lost: Cargo{}}
+	some := buildTelemetry(run, Session{Hull: "Frigate"}, Character{}, nil)
+	if some.CansSpawned == some.CansLooted {
+		t.Errorf("default must not claim every can was looted: %d/%d", some.CansSpawned, some.CansLooted)
+	}
+	all := buildTelemetry(run, Session{Hull: "Frigate", AllCans: true}, Character{}, nil)
+	if all.CansSpawned != all.CansLooted || all.CansSpawned == 0 {
+		t.Errorf("all cans: %d/%d", all.CansSpawned, all.CansLooted)
+	}
+}
