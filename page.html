@@ -28,7 +28,7 @@
 
 <div class="state {{if .Active}}on{{else}}off{{end}}" role="status">
   <strong>{{if .Active}}Session en cours{{else}}Pas de session{{end}}</strong>
-  — {{if .Character}}{{.Character}}{{else}}aucun personnage connecté{{end}}
+  {{if .Character}}— {{.Character}}{{end}}
   {{if .Status}}<pre>{{.Status}}</pre>{{end}}
 </div>
 
@@ -64,18 +64,17 @@
 </form>
 {{end}}
 
-<details {{if or (not .HasKey) (not .Character)}}open{{end}}>
+<details {{if not .HasKey}}open{{end}}>
   <summary>Réglages</summary>
   <form method="post" action="/settings">
     <label>Jeton Abyss Tracker <small>{{if .HasKey}}enregistré ; laisse vide pour le garder{{else}}à créer sur abysstracker.com → My account → Personal access tokens{{end}}</small>
       <input type="password" name="api_key" autocomplete="off">
     </label>
-    <label>Identifiant de l'application EVE <small>developers.eveonline.com, callback {{.Redirect}}, scope esi-location.read_location.v1</small>
-      <input type="text" name="esi_client_id" value="{{.ClientID}}" autocomplete="off">
+    <label>Dossier des journaux de discussion d'EVE <small>là où EVE écrit ses fichiers Local_….txt</small>
+      <input type="text" name="chatlog_dir" value="{{.ChatlogDir}}" autocomplete="off">
     </label>
     <button type="submit">Enregistrer</button>
   </form>
-  <p><a href="/login">{{if .Character}}Changer de personnage EVE{{else}}Connecter le personnage EVE{{end}}</a></p>
 </details>
 </body>
 </html>

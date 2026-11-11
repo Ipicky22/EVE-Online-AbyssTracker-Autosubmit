@@ -2,21 +2,6 @@ package main
 
 import "time"
 
-// Plage des systèmes abyssaux (AD001 à AD200) dans ESI.
-const (
-	abyssMin = 32000001
-	abyssMax = 32000200
-)
-
-// Reading est une lecture de position ESI.
-type Reading struct {
-	At       time.Time
-	SystemID int
-	Docked   bool
-}
-
-func (r Reading) inAbyss() bool { return r.SystemID >= abyssMin && r.SystemID <= abyssMax }
-
 // Run est un run détecté, avant ajout des paramètres de session.
 type Run struct {
 	Start    time.Time
@@ -48,63 +33,71 @@ const (
 	awaitingLoot
 )
 
-// Tracker transforme lectures de position et copies de soute en runs.
+// Tracker transforme changements de système et copies de soute en runs.
 // Aucune entrée/sortie ici : tout passe par les valeurs de retour.
 type Tracker struct {
-	state     trackerState
-	base      Cargo    // soute avant le prochain run ; nil = inconnue
-	candidate *Reading // 1re lecture d'un changement, à confirmer par la suivante
-	run       Run
-	late      Cargo // dernière copie faite alors que le run semblait encore en cours
-	lateAt    time.Time
+	state  trackerState
+	base   Cargo  // soute avant le prochain run ; nil = inconnue
+	system string // dernier système connu hors Abysse
+	entry  string // système d'où le run en cours a été lancé
+	ignore bool   // run déjà en cours au démarrage de la session : ni début ni soute connus
+	run    Run
+	late   Cargo // dernière copie faite alors que le run semblait encore en cours
+	lateAt time.Time
 }
 
-// lateGrace couvre le retard de détection de la sortie : cache ESI (5 s) + intervalle de lecture (5 s) + marge.
+// lateGrace couvre le délai entre la sortie réelle et sa lecture dans le journal.
+// Il se mesure sur l'horloge du PC (heure de la copie, heure de lecture de la ligne) :
+// l'heure EVE écrite dans le journal peut être décalée de celle du PC.
 const lateGrace = 15 * time.Second
 
-func (t *Tracker) OnReading(r Reading) []Outcome {
-	switch t.state {
-	case idle, awaitingLoot:
-		if r.inAbyss() {
-			if t.candidate == nil {
-				t.candidate = &r
-				return nil
-			}
-			return t.enter(*t.candidate)
+// SetLocation donne la position lue dans l'historique du journal, avant tout nouvel événement.
+func (t *Tracker) SetLocation(e LocalEvent) {
+	if e.Abyss {
+		t.state, t.ignore = inAbyss, true
+		return
+	}
+	t.system = e.System
+}
+
+// OnLocal traite un changement de système ; seen est l'heure du PC à laquelle la ligne a été lue.
+func (t *Tracker) OnLocal(e LocalEvent, seen time.Time) []Outcome {
+	switch {
+	case e.Abyss:
+		if t.state == inAbyss {
+			return nil
 		}
-		t.candidate = nil
-		if r.Docked {
-			return t.docked()
-		}
-	case inAbyss:
-		if !r.inAbyss() {
-			if t.candidate == nil {
-				t.candidate = &r
-				return nil
-			}
-			return t.exit(*t.candidate)
-		}
-		t.candidate = nil
+		return t.enter(e.At)
+	case t.state == inAbyss:
+		return t.exit(e, seen)
+	case e.System != t.system:
+		t.system = e.System
+		return t.moved()
 	}
 	return nil
 }
 
-func (t *Tracker) enter(first Reading) []Outcome {
+func (t *Tracker) enter(at time.Time) []Outcome {
 	out := t.dropAwaiting("nouveau run lancé sans copie de soute")
-	t.candidate = nil
-	t.state = inAbyss
-	t.run, t.late = Run{Start: first.At}, nil
+	t.state, t.entry = inAbyss, t.system
+	t.run, t.late = Run{Start: at}, nil
 	if t.base == nil {
 		out = append(out, Outcome{Kind: Notify, Msg: "Run détecté sans copie de soute au départ : il ne sera pas envoyé."})
 	}
 	return out
 }
 
-func (t *Tracker) exit(first Reading) []Outcome {
-	t.candidate = nil
-	t.run.Duration = first.At.Sub(t.run.Start)
-	// Mort dans l'Abysse : la capsule est détruite aussi, le personnage se réveille amarré.
-	if first.Docked {
+func (t *Tracker) exit(e LocalEvent, seen time.Time) []Outcome {
+	entry := t.entry
+	t.system = e.System
+	if t.ignore {
+		t.state, t.ignore = idle, false
+		return []Outcome{{Kind: Notify, Msg: "Run déjà en cours au démarrage de la session : ignoré. Copie ta soute pour le prochain."}}
+	}
+	t.run.Duration = e.At.Sub(t.run.Start)
+	// Mort dans l'Abysse : la capsule est détruite aussi, le personnage se réveille dans son clone.
+	// shortcut: indétectable si le clone est dans le système d'où le filament a été lancé.
+	if entry != "" && e.System != entry {
 		t.state, t.base = idle, nil
 		run := t.run
 		run.Gained, run.Lost = Cargo{}, Cargo{}
@@ -117,8 +110,8 @@ func (t *Tracker) exit(first Reading) []Outcome {
 	}
 	t.state = awaitingLoot
 	t.run.Success = true
-	// La sortie est connue 5 à 15 s après coup : une copie faite juste avant la détection est celle d'après-run.
-	if late := t.late; late != nil && first.At.Sub(t.lateAt) <= lateGrace {
+	// Une copie faite juste avant que la sortie ne soit lue dans le journal est celle d'après-run.
+	if late := t.late; late != nil && seen.Sub(t.lateAt) <= lateGrace {
 		if out := t.OnCargo(late, t.lateAt); out != nil {
 			return out
 		}
@@ -126,11 +119,13 @@ func (t *Tracker) exit(first Reading) []Outcome {
 	return []Outcome{{Kind: Notify, Msg: "Run terminé. Copie ta soute (Ctrl+A, Ctrl+C)."}}
 }
 
-func (t *Tracker) docked() []Outcome {
-	out := t.dropAwaiting("amarrage avant la copie de soute")
+// moved : le personnage a changé de système hors run. Le journal ne dit pas s'il s'est amarré en route,
+// donc la soute connue n'est plus fiable.
+func (t *Tracker) moved() []Outcome {
+	out := t.dropAwaiting("changement de système avant la copie de soute")
 	if t.base != nil {
 		t.base = nil
-		out = append(out, Outcome{Kind: Notify, Msg: "Amarré : recopie ta soute avant le prochain run."})
+		out = append(out, Outcome{Kind: Notify, Msg: "Changement de système : recopie ta soute avant le prochain run."})
 	}
 	return out
 }

@@ -22,8 +22,8 @@ var (
 	weatherValues = []string{"Electrical", "Dark", "Exotic", "Firestorm", "Gamma"} // confirmées par les runs publics
 )
 
-// Les runs partent toujours en public : un run envoyé en PRIVATE est accepté par le serveur
-// mais n'apparaît nulle part sur le site, même pour son auteur.
+// Les runs partent toujours en public, avec le nom du personnage.
+// Toute autre valeur publie le run en anonyme (confirmé par l'équipe d'EVE Workbench).
 const privacy = "PUBLIC"
 
 // Fit est un fit du compte Abyss Tracker.

@@ -2,128 +2,22 @@ package main
 
 import (
 	"bytes"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 )
 
+// Seuls des appels ESI publics sont faits : aucune connexion du personnage n'est nécessaire.
 const (
-	ssoAuthorize = "https://login.eveonline.com/v2/oauth/authorize"
-	ssoToken     = "https://login.eveonline.com/v2/oauth/token"
-	esiBase      = "https://esi.evetech.net/latest"
-	esiScope     = "esi-location.read_location.v1"
-	userAgent    = "abyssup/0.1" // nom générique : aucune donnée personnelle envoyée à ESI
+	esiBase   = "https://esi.evetech.net/latest"
+	userAgent = "abyssup/0.1" // nom générique : aucune donnée personnelle envoyée à ESI
 )
 
 var httpClient = &http.Client{Timeout: 15 * time.Second}
-
-// Token est la session SSO du personnage.
-type Token struct {
-	Access        string
-	Refresh       string
-	Expiry        time.Time
-	CharacterID   int
-	CharacterName string
-}
-
-func (t *Token) valid() bool { return t != nil && time.Until(t.Expiry) > 30*time.Second }
-
-func randomString() string {
-	b := make([]byte, 32)
-	rand.Read(b)
-	return base64.RawURLEncoding.EncodeToString(b)
-}
-
-// authorizeURL prépare la connexion SSO en PKCE : pas de secret client à stocker.
-func authorizeURL(clientID, redirect, state, verifier string) string {
-	sum := sha256.Sum256([]byte(verifier))
-	q := url.Values{
-		"response_type":         {"code"},
-		"redirect_uri":          {redirect},
-		"client_id":             {clientID},
-		"scope":                 {esiScope},
-		"state":                 {state},
-		"code_challenge":        {base64.RawURLEncoding.EncodeToString(sum[:])},
-		"code_challenge_method": {"S256"},
-	}
-	return ssoAuthorize + "?" + q.Encode()
-}
-
-func exchangeCode(clientID, code, verifier string) (*Token, error) {
-	return requestToken(url.Values{
-		"grant_type": {"authorization_code"}, "client_id": {clientID}, "code": {code}, "code_verifier": {verifier},
-	})
-}
-
-func refreshToken(clientID, refresh string) (*Token, error) {
-	return requestToken(url.Values{
-		"grant_type": {"refresh_token"}, "client_id": {clientID}, "refresh_token": {refresh},
-	})
-}
-
-func requestToken(form url.Values) (*Token, error) {
-	req, _ := http.NewRequest("POST", ssoToken, strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	var res struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-	}
-	if err := doJSON(req, &res); err != nil {
-		return nil, fmt.Errorf("SSO EVE: %w", err)
-	}
-	tok := &Token{Access: res.AccessToken, Refresh: res.RefreshToken}
-	if tok.Refresh == "" {
-		tok.Refresh = form.Get("refresh_token")
-	}
-	// Le jeton d'accès est un JWT reçu directement du SSO en TLS : on lit ses champs sans revérifier la signature.
-	parts := strings.Split(tok.Access, ".")
-	if len(parts) != 3 {
-		return nil, errors.New("SSO EVE: jeton d'accès illisible")
-	}
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return nil, fmt.Errorf("SSO EVE: %w", err)
-	}
-	var claims struct {
-		Sub  string `json:"sub"` // "CHARACTER:EVE:<id>"
-		Name string `json:"name"`
-		Exp  int64  `json:"exp"`
-	}
-	if err := json.Unmarshal(payload, &claims); err != nil {
-		return nil, fmt.Errorf("SSO EVE: %w", err)
-	}
-	id, err := strconv.Atoi(claims.Sub[strings.LastIndex(claims.Sub, ":")+1:])
-	if err != nil {
-		return nil, fmt.Errorf("SSO EVE: personnage illisible dans %q", claims.Sub)
-	}
-	tok.CharacterID, tok.CharacterName, tok.Expiry = id, claims.Name, time.Unix(claims.Exp, 0)
-	return tok, nil
-}
-
-// fetchLocation lit la position du personnage (cache ESI : 5 s).
-func fetchLocation(tok *Token) (Reading, error) {
-	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/characters/%d/location/", esiBase, tok.CharacterID), nil)
-	req.Header.Set("Authorization", "Bearer "+tok.Access)
-	var res struct {
-		SolarSystemID int   `json:"solar_system_id"`
-		StationID     int64 `json:"station_id"`
-		StructureID   int64 `json:"structure_id"`
-	}
-	if err := doJSON(req, &res); err != nil {
-		return Reading{}, fmt.Errorf("ESI location: %w", err)
-	}
-	return Reading{At: time.Now(), SystemID: res.SolarSystemID, Docked: res.StationID != 0 || res.StructureID != 0}, nil
-}
 
 // Item est un type d'objet EVE avec son nom anglais, seul accepté par Abyss Tracker.
 type Item struct {

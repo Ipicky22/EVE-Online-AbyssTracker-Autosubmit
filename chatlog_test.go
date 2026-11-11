@@ -1,0 +1,101 @@
+package main
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+	"unicode/utf16"
+)
+
+func TestParseLocalLine(t *testing.T) {
+	at := time.Date(2026, 11, 11, 12, 56, 51, 0, time.UTC)
+	cases := []struct {
+		line string
+		want LocalEvent
+		ok   bool
+	}{
+		// Lignes réelles d'un client français : BOM en tête, espace insécable avant les deux-points, étoile après le nom.
+		{"\ufeff[ 2026.11.11 12:56:51 ] Système EVE > Canal changé en Local\u00a0: Alillere*", LocalEvent{At: at, System: "Alillere"}, true},
+		{"\ufeff[ 2026.11.11 12:56:51 ] Système EVE > Canal changé en Local\u00a0: Inconnu", LocalEvent{At: at, System: "Inconnu", Abyss: true}, true},
+		// Client anglais.
+		{"\ufeff[ 2026.11.11 12:56:51 ] EVE System > Channel changed to Local : Jita", LocalEvent{At: at, System: "Jita"}, true},
+		{"\ufeff[ 2026.11.11 12:56:51 ] EVE System > Channel changed to Local : Unknown", LocalEvent{At: at, System: "Unknown", Abyss: true}, true},
+		// Un joueur qui écrit la même phrase n'est pas le système.
+		{"\ufeff[ 2026.11.11 12:56:51 ] Some Pilot > Channel changed to Local : Unknown", LocalEvent{}, false},
+		{"          Channel Name:    Local", LocalEvent{}, false},
+		{"", LocalEvent{}, false},
+	}
+	for _, c := range cases {
+		got, ok := parseLocalLine(c.line)
+		if ok != c.ok || got != c.want {
+			t.Errorf("%q: got %+v ok=%v, want %+v ok=%v", c.line, got, ok, c.want, c.ok)
+		}
+	}
+}
+
+// appendUTF16 écrit du texte comme le fait le client EVE : UTF-16LE, fins de ligne CRLF.
+func appendUTF16(t *testing.T, path, text string) {
+	t.Helper()
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	var b []byte
+	for _, u := range utf16.Encode([]rune(text)) {
+		b = append(b, byte(u), byte(u>>8))
+	}
+	if _, err := f.Write(b); err != nil {
+		t.Fatal(err)
+	}
+}
+
+const header = "\ufeff\r\n\r\n        ---------------------------------------------------------------\r\n\r\n" +
+	"          Channel ID:      local\r\n          Channel Name:    Local\r\n" +
+	"          Listener:        Test Pilot\r\n          Session started: 2026.11.11 11:28:29\r\n" +
+	"        ---------------------------------------------------------------\r\n\r\n"
+
+func TestLocalTail(t *testing.T) {
+	dir := t.TempDir()
+	tail := &localTail{dir: dir}
+	if _, _, _, err := tail.read(); err == nil {
+		t.Fatal("un dossier sans journal Local doit rendre une erreur")
+	}
+
+	old := filepath.Join(dir, "Local_20261110_090000_90000001.txt")
+	appendUTF16(t, old, header+"\ufeff[ 2026.11.10 09:00:05 ] EVE System > Channel changed to Local : Jita\r\n")
+	path := filepath.Join(dir, "Local_20261111_112829_90000001.txt")
+	appendUTF16(t, path, header+"\ufeff[ 2026.11.11 11:28:32 ] Système EVE > Canal changé en Local\u00a0: Alillere*\r\n")
+	// Un autre canal dans le même dossier ne doit pas être pris pour le Local.
+	appendUTF16(t, filepath.Join(dir, "Corp_20261111_120000_90000001.txt"), header)
+
+	events, fresh, char, err := tail.read()
+	if err != nil || !fresh || len(events) != 1 || events[0].System != "Alillere" {
+		t.Fatalf("1re lecture: events=%+v fresh=%v err=%v", events, fresh, err)
+	}
+	if char != (Character{ID: 90000001, Name: "Test Pilot"}) {
+		t.Errorf("personnage = %+v", char)
+	}
+
+	// Rien de neuf, puis une ligne écrite en deux fois : elle ne compte qu'une fois complète.
+	if events, fresh, _, _ = tail.read(); len(events) != 0 || fresh {
+		t.Fatalf("lecture sans nouveauté: events=%+v fresh=%v", events, fresh)
+	}
+	appendUTF16(t, path, "\ufeff[ 2026.11.11 12:56:51 ] Système EVE > Canal changé en Lo")
+	if events, _, _, _ = tail.read(); len(events) != 0 {
+		t.Fatalf("ligne incomplète lue: %+v", events)
+	}
+	appendUTF16(t, path, "cal\u00a0: Inconnu\r\n\ufeff[ 2026.11.11 13:07:57 ] Système EVE > Canal changé en Local\u00a0: Alillere*\r\n")
+	events, _, _, _ = tail.read()
+	if len(events) != 2 || !events[0].Abyss || events[1].Abyss || events[1].At.Sub(events[0].At) != 666*time.Second {
+		t.Fatalf("run lu: %+v", events)
+	}
+
+	// Nouvelle connexion à EVE : un fichier plus récent prend le relais.
+	appendUTF16(t, filepath.Join(dir, "Local_20261111_200000_90000002.txt"), header+"\ufeff[ 2026.11.11 20:00:03 ] EVE System > Channel changed to Local : Amarr\r\n")
+	events, fresh, char, _ = tail.read()
+	if !fresh || len(events) != 1 || events[0].System != "Amarr" || char.ID != 90000002 {
+		t.Fatalf("bascule de fichier: events=%+v fresh=%v char=%+v", events, fresh, char)
+	}
+}

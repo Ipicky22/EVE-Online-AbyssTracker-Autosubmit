@@ -18,27 +18,24 @@ var pageTmpl = template.Must(template.New("page").Parse(pageHTML))
 var tierNames = []string{"Tranquil", "Calm", "Agitated", "Fierce", "Raging", "Chaotic", "Cataclysmic"}
 
 type pageData struct {
-	Status    string
-	Active    bool
-	DryRun    bool
-	Character string
-	HasKey    bool
-	ClientID  string
-	Redirect  string
-	S         Session
-	Fits      []Fit
-	FitsErr   string
-	Weathers  []string
-	Tiers     []string
-	Hulls     []string
+	Status     string
+	Active     bool
+	DryRun     bool
+	Character  string
+	HasKey     bool
+	ChatlogDir string
+	S          Session
+	Fits       []Fit
+	FitsErr    string
+	Weathers   []string
+	Tiers      []string
+	Hulls      []string
 }
 
 func (a *App) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", a.handlePage)
 	mux.HandleFunc("POST /settings", a.handleSettings)
-	mux.HandleFunc("GET /login", a.handleLogin)
-	mux.HandleFunc("GET /callback", a.handleCallback)
 	mux.HandleFunc("POST /session/start", a.handleStart)
 	mux.HandleFunc("POST /session/stop", a.handleStop)
 	// Un autre site ouvert dans le navigateur ne doit ni poster ici (CSRF) ni lire la page (DNS rebinding).
@@ -71,12 +68,12 @@ func (a *App) handlePage(w http.ResponseWriter, r *http.Request) {
 	}
 	d := pageData{
 		Status: a.status, Active: a.tracker != nil, DryRun: a.dryRun,
-		HasKey: a.cfg.APIKey != "", ClientID: a.cfg.ESIClientID, Redirect: pageURL + "/callback",
+		HasKey: a.cfg.APIKey != "", ChatlogDir: a.chatlogDir(),
 		S: a.cfg.Session, Fits: a.fits, FitsErr: fitsErr,
 		Weathers: weatherValues, Tiers: tierNames, Hulls: hullValues,
 	}
-	if a.tok != nil {
-		d.Character = a.tok.CharacterName
+	if a.tracker != nil {
+		d.Character = a.char.Name
 	}
 	a.mu.Unlock()
 
@@ -92,46 +89,15 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 	if key := strings.TrimSpace(r.FormValue("api_key")); key != "" {
 		a.cfg.APIKey = key
 	}
-	a.cfg.ESIClientID = strings.TrimSpace(r.FormValue("esi_client_id"))
+	// Le dossier par défaut n'est pas figé dans la config : il reste détecté à chaque lancement.
+	if dir := strings.TrimSpace(r.FormValue("chatlog_dir")); dir == defaultChatlogDir() {
+		a.cfg.ChatlogDir = ""
+	} else {
+		a.cfg.ChatlogDir = dir
+	}
 	a.save("config.json", a.cfg)
 	a.mu.Unlock()
 	a.setStatus("Réglages enregistrés.")
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
-	a.mu.Lock()
-	clientID := a.cfg.ESIClientID
-	a.oauthState, a.oauthVerifier = randomString(), randomString()
-	state, verifier := a.oauthState, a.oauthVerifier
-	a.mu.Unlock()
-	if clientID == "" {
-		a.setStatus("Renseigne d'abord l'identifiant de ton application EVE (Réglages).")
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
-	http.Redirect(w, r, authorizeURL(clientID, pageURL+"/callback", state, verifier), http.StatusSeeOther)
-}
-
-func (a *App) handleCallback(w http.ResponseWriter, r *http.Request) {
-	a.mu.Lock()
-	state, verifier, clientID := a.oauthState, a.oauthVerifier, a.cfg.ESIClientID
-	a.oauthState = "" // usage unique
-	a.mu.Unlock()
-	if state == "" || r.FormValue("state") != state {
-		http.Error(w, "retour SSO inattendu", http.StatusBadRequest)
-		return
-	}
-	tok, err := exchangeCode(clientID, r.FormValue("code"), verifier)
-	if err != nil {
-		a.setStatus("Connexion EVE échouée : " + err.Error())
-	} else {
-		a.mu.Lock()
-		a.tok = tok
-		a.save("token.json", tok)
-		a.mu.Unlock()
-		a.setStatus("Personnage connecté : " + tok.CharacterName)
-	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 

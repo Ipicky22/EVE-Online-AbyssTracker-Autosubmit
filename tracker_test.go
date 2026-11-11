@@ -6,33 +6,47 @@ import (
 	"time"
 )
 
-var t0 = time.Date(2026, 11, 11, 20, 0, 0, 0, time.UTC)
+var t0 = time.Date(2026, 11, 11, 12, 50, 0, 0, time.UTC)
 
 const (
-	jita  = 30000142
-	abyss = 32000042
+	home  = "Alillere"
+	other = "Dodixie"
 )
 
-// feed envoie une lecture toutes les 5 s et rend tous les résultats.
+// feed rejoue une suite de changements de système et de copies de soute.
 type feed struct {
 	tr  Tracker
 	now time.Time
 	out []Outcome
 }
 
-func newFeed() *feed { return &feed{now: t0} }
+func newFeed() *feed {
+	f := &feed{now: t0}
+	f.tr.SetLocation(LocalEvent{System: home})
+	return f
+}
 
-func (f *feed) read(system int, docked bool, n int) *feed {
-	for range n {
-		f.out = append(f.out, f.tr.OnReading(Reading{At: f.now, SystemID: system, Docked: docked})...)
-		f.now = f.now.Add(5 * time.Second)
-	}
+// wait avance l'horloge.
+func (f *feed) wait(d time.Duration) *feed { f.now = f.now.Add(d); return f }
+
+func (f *feed) to(system string) *feed {
+	f.out = append(f.out, f.tr.OnLocal(LocalEvent{At: f.now, System: system}, f.now)...)
+	return f
+}
+
+func (f *feed) abyss() *feed {
+	f.out = append(f.out, f.tr.OnLocal(LocalEvent{At: f.now, System: "Inconnu", Abyss: true}, f.now)...)
 	return f
 }
 
 func (f *feed) cargo(c Cargo) *feed {
 	f.out = append(f.out, f.tr.OnCargo(c, f.now)...)
 	return f
+}
+
+// run joue un run de 10 minutes lancé depuis et ressorti dans le système donné.
+func (f *feed) run(exit string) *feed {
+	return f.wait(time.Minute).abyss().wait(10 * time.Minute).to(exit).wait(30 * time.Second)
 }
 
 func (f *feed) runs(kind OutcomeKind) []*Run {
@@ -45,19 +59,23 @@ func (f *feed) runs(kind OutcomeKind) []*Run {
 	return runs
 }
 
+func (f *feed) expect(t *testing.T, complete, incomplete int) {
+	t.Helper()
+	if c, i := len(f.runs(Complete)), len(f.runs(Incomplete)); c != complete || i != incomplete {
+		t.Fatalf("complete=%d incomplete=%d, want %d/%d", c, i, complete, incomplete)
+	}
+}
+
 var (
 	before = Cargo{"Tranquil Exotic Filament": 2, "Ammo": 100}
 	after  = Cargo{"Tranquil Exotic Filament": 1, "Ammo": 80, "Loot": 5}
 )
 
 func TestNormalRun(t *testing.T) {
-	f := newFeed().cargo(before).read(jita, false, 2).read(abyss, false, 120).read(jita, false, 2).cargo(after)
-	runs := f.runs(Complete)
-	if len(runs) != 1 || len(f.runs(Incomplete)) != 0 {
-		t.Fatalf("complete=%d incomplete=%d, want 1/0", len(runs), len(f.runs(Incomplete)))
-	}
-	r := runs[0]
-	if !r.Success || r.Start != t0.Add(10*time.Second) || r.Duration != 600*time.Second {
+	f := newFeed().cargo(before).run(home).cargo(after)
+	f.expect(t, 1, 0)
+	r := f.runs(Complete)[0]
+	if !r.Success || r.Start != t0.Add(time.Minute) || r.Duration != 10*time.Minute {
 		t.Errorf("run = %+v", r)
 	}
 	if !reflect.DeepEqual(r.Gained, Cargo{"Loot": 5}) || !reflect.DeepEqual(r.Lost, Cargo{"Tranquil Exotic Filament": 1, "Ammo": 20}) {
@@ -66,92 +84,72 @@ func TestNormalRun(t *testing.T) {
 }
 
 func TestChainedRunsReuseLastCopy(t *testing.T) {
-	after2 := Cargo{"Ammo": 60, "Loot": 9}
-	f := newFeed().cargo(before).
-		read(abyss, false, 10).read(jita, false, 2).cargo(after).
-		read(abyss, false, 10).read(jita, false, 2).cargo(after2)
-	runs := f.runs(Complete)
-	if len(runs) != 2 {
-		t.Fatalf("complete=%d, want 2", len(runs))
-	}
-	if !reflect.DeepEqual(runs[1].Gained, Cargo{"Loot": 4}) {
-		t.Errorf("2e run gained=%v", runs[1].Gained)
+	f := newFeed().cargo(before).run(home).cargo(after).run(home).cargo(Cargo{"Ammo": 60, "Loot": 9})
+	f.expect(t, 2, 0)
+	if got := f.runs(Complete)[1].Gained; !reflect.DeepEqual(got, Cargo{"Loot": 4}) {
+		t.Errorf("2e run gained=%v", got)
 	}
 }
 
-func TestDeath(t *testing.T) {
-	f := newFeed().cargo(before).read(abyss, false, 10).read(jita, true, 2)
-	runs := f.runs(Complete)
-	if len(runs) != 1 || runs[0].Success || len(runs[0].Gained) != 0 {
-		t.Fatalf("runs=%+v, want 1 run perdu sans butin", runs)
+func TestDeathIsExitInAnotherSystem(t *testing.T) {
+	f := newFeed().cargo(before).run(other)
+	f.expect(t, 1, 0)
+	if r := f.runs(Complete)[0]; r.Success || len(r.Gained) != 0 {
+		t.Fatalf("run = %+v, want un run perdu sans butin", r)
 	}
 	// La soute de départ n'est plus valable : le run suivant ne doit pas partir.
-	f.read(jita, false, 2).read(abyss, false, 10).read(jita, false, 2).cargo(after)
-	if len(f.runs(Complete)) != 1 || len(f.runs(Incomplete)) != 1 {
-		t.Errorf("complete=%d incomplete=%d, want 1/1", len(f.runs(Complete)), len(f.runs(Incomplete)))
-	}
+	f.run(other).cargo(after)
+	f.expect(t, 1, 1)
 }
 
 func TestForgottenCopy(t *testing.T) {
-	f := newFeed().cargo(before).read(abyss, false, 10).read(jita, false, 2).read(abyss, false, 10).read(jita, false, 2).cargo(after)
-	if len(f.runs(Complete)) != 0 || len(f.runs(Incomplete)) != 2 {
-		t.Errorf("complete=%d incomplete=%d, want 0/2", len(f.runs(Complete)), len(f.runs(Incomplete)))
-	}
+	f := newFeed().cargo(before).run(home).run(home).cargo(after)
+	f.expect(t, 0, 2)
 }
 
-func TestDockingInvalidatesBase(t *testing.T) {
-	f := newFeed().cargo(before).read(jita, true, 1).read(jita, false, 1).read(abyss, false, 10).read(jita, false, 2).cargo(after)
-	if len(f.runs(Complete)) != 0 || len(f.runs(Incomplete)) != 1 {
-		t.Errorf("complete=%d incomplete=%d, want 0/1", len(f.runs(Complete)), len(f.runs(Incomplete)))
-	}
+func TestTravelInvalidatesBase(t *testing.T) {
+	// Aller-retour vers un autre système : le journal ne dit pas si la soute a été vidée en station.
+	f := newFeed().cargo(before).to(other).to(home).run(home).cargo(after)
+	f.expect(t, 0, 1)
 }
 
-func TestDockingBeforeCopyDropsRun(t *testing.T) {
-	f := newFeed().cargo(before).read(abyss, false, 10).read(jita, false, 2).read(jita, true, 1).cargo(after)
-	if len(f.runs(Complete)) != 0 || len(f.runs(Incomplete)) != 1 {
-		t.Errorf("complete=%d incomplete=%d, want 0/1", len(f.runs(Complete)), len(f.runs(Incomplete)))
-	}
+func TestTravelBeforeCopyDropsRun(t *testing.T) {
+	f := newFeed().cargo(before).run(home).to(other).cargo(after)
+	f.expect(t, 0, 1)
 }
 
-func TestSingleStrayReadingIsIgnored(t *testing.T) {
-	f := newFeed().cargo(before).read(jita, false, 2).read(abyss, false, 1).read(jita, false, 2).
-		read(abyss, false, 10).read(jita, false, 1).read(abyss, false, 10).read(jita, false, 2).cargo(after)
-	runs := f.runs(Complete)
-	if len(runs) != 1 {
-		t.Fatalf("complete=%d, want 1", len(runs))
-	}
-	if want := 21 * 5 * time.Second; runs[0].Duration != want {
-		t.Errorf("duration=%v, want %v", runs[0].Duration, want)
-	}
-}
+func TestCopyJustBeforeExitIsRead(t *testing.T) {
+	// Copie faite dès la sortie, avant que la ligne du journal ne soit lue.
+	f := newFeed().cargo(before).wait(time.Minute).abyss().wait(10 * time.Minute)
+	exit := f.now
+	f.wait(2 * time.Second).cargo(after)
+	f.out = append(f.out, f.tr.OnLocal(LocalEvent{At: exit, System: home}, f.now)...)
+	f.expect(t, 1, 0)
 
-func TestUnchangedCopyAndCopyInsideAbyssAreIgnored(t *testing.T) {
-	f := newFeed().cargo(before).read(abyss, false, 5).cargo(Cargo{"Ammo": 1}).read(abyss, false, 5).read(jita, false, 2).cargo(before)
-	if len(f.runs(Complete)) != 0 {
-		t.Fatalf("un run est parti avec une copie sans changement")
-	}
-	if f.cargo(after); len(f.runs(Complete)) != 1 {
-		t.Errorf("complete=%d, want 1", len(f.runs(Complete)))
-	}
-}
-
-func TestCopyJustBeforeExitIsDetected(t *testing.T) {
-	// Copie faite dès la sortie, avant que la 2e lecture ne la confirme : pas besoin de recopier.
-	f := newFeed().cargo(before).read(abyss, false, 10).read(jita, false, 1).cargo(after).read(jita, false, 1)
-	if len(f.runs(Complete)) != 1 {
-		t.Fatalf("complete=%d, want 1", len(f.runs(Complete)))
-	}
 	// Copie faite en plein run, longtemps avant la sortie : elle ne vaut pas copie d'après-run.
-	f = newFeed().cargo(before).read(abyss, false, 2).cargo(after).read(abyss, false, 10).read(jita, false, 2)
-	if len(f.runs(Complete)) != 0 {
-		t.Fatalf("une copie de milieu de run a été prise pour la copie finale")
-	}
+	f = newFeed().cargo(before).wait(time.Minute).abyss().wait(time.Minute).cargo(after).wait(9 * time.Minute).to(home)
+	f.expect(t, 0, 0)
+}
+
+func TestUnchangedCopyIsIgnored(t *testing.T) {
+	f := newFeed().cargo(before).run(home).cargo(before)
+	f.expect(t, 0, 0)
+	f.cargo(after)
+	f.expect(t, 1, 0)
+}
+
+func TestSessionStartedMidRun(t *testing.T) {
+	f := &feed{now: t0}
+	f.tr.SetLocation(LocalEvent{System: "Inconnu", Abyss: true})
+	f.wait(5 * time.Minute).to(home)
+	f.expect(t, 0, 0)
+	// Le run suivant se déroule normalement.
+	f.cargo(before).run(home).cargo(after)
+	f.expect(t, 1, 0)
 }
 
 func TestStopDropsAwaitingRun(t *testing.T) {
-	f := newFeed().cargo(before).read(abyss, false, 10).read(jita, false, 2)
+	f := newFeed().cargo(before).run(home)
 	f.out = append(f.out, f.tr.Stop()...)
-	if len(f.runs(Incomplete)) != 1 {
-		t.Errorf("incomplete=%d, want 1", len(f.runs(Incomplete)))
-	}
+	f.expect(t, 0, 1)
 }
