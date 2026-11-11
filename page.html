@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="{{.Lang}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -24,56 +24,61 @@
 </style>
 </head>
 <body>
-<h1>abyssup{{if .DryRun}} <small>(dry-run : rien n'est envoyé)</small>{{end}}</h1>
+<h1>abyssup{{if .DryRun}} <small>({{.L.dryRunBanner}})</small>{{end}}</h1>
 
 <div class="state {{if .Active}}on{{else}}off{{end}}" role="status">
-  <strong>{{if .Active}}Session en cours{{else}}Pas de session{{end}}</strong>
+  <strong>{{if .Active}}{{.L.sessionOn}}{{else}}{{.L.sessionOff}}{{end}}</strong>
   {{if .Character}}— {{.Character}}{{end}}
   {{if .Status}}<pre>{{.Status}}</pre>{{end}}
 </div>
 
 <form method="post" action="/session/start">
   <div class="row">
-    <label>Météo
+    <label>{{.L.weather}}
       <select name="weather">
         {{range .Weathers}}<option {{if eq . $.S.Weather}}selected{{end}}>{{.}}</option>{{end}}
       </select>
     </label>
-    <label>Tier
+    <label>{{.L.tier}}
       <select name="tier">
         {{range $i, $n := .Tiers}}<option value="{{$i}}" {{if eq $i $.S.Tier}}selected{{end}}>T{{$i}} – {{$n}}</option>{{end}}
       </select>
     </label>
   </div>
-  <label>Coque
+  <label>{{.L.hull}}
     <select name="hull">
       {{range .Hulls}}<option {{if eq . $.S.Hull}}selected{{end}}>{{.}}</option>{{end}}
     </select>
   </label>
-  <label>Fit <small>{{if .FitsErr}}{{.FitsErr}}{{else if not .HasKey}}renseigne ton jeton Abyss Tracker pour lister tes fits{{end}}</small>
+  <label>{{.L.fit}} <small>{{if .FitsErr}}{{.FitsErr}}{{else if not .HasKey}}{{.L.fitNeedsToken}}{{end}}</small>
     <select name="fit">
-      <option value="">Aucun</option>
+      <option value="">{{.L.none}}</option>
       {{range .Fits}}<option value="{{.ID}}" {{if eq .ID $.S.FitID}}selected{{end}}>{{.Ship.Name}} — {{.Name}}</option>{{end}}
     </select>
   </label>
-  <button type="submit">{{if .Active}}Mettre à jour la session{{else}}Démarrer la session{{end}}</button>
+  <button type="submit">{{if .Active}}{{.L.updateSession}}{{else}}{{.L.startSession}}{{end}}</button>
 </form>
 {{if .Active}}
 <form method="post" action="/session/stop" style="margin-top:.75rem">
-  <button type="submit">Terminer la session</button>
+  <button type="submit">{{.L.endSession}}</button>
 </form>
 {{end}}
 
 <details {{if not .HasKey}}open{{end}}>
-  <summary>Réglages</summary>
+  <summary>{{.L.settings}}</summary>
   <form method="post" action="/settings">
-    <label>Jeton Abyss Tracker <small>{{if .HasKey}}enregistré ; laisse vide pour le garder{{else}}à créer sur abysstracker.com → My account → Personal access tokens{{end}}</small>
+    <label>{{.L.language}}
+      <select name="lang">
+        {{range .Langs}}<option value="{{.}}" {{if eq . $.Lang}}selected{{end}}>{{index $.LangNames .}}</option>{{end}}
+      </select>
+    </label>
+    <label>{{.L.tokenLabel}} <small>{{if .HasKey}}{{.L.tokenSaved}}{{else}}{{.L.tokenHowTo}}{{end}}</small>
       <input type="password" name="api_key" autocomplete="off">
     </label>
-    <label>Dossier des journaux de discussion d'EVE <small>là où EVE écrit ses fichiers Local_….txt</small>
+    <label>{{.L.logDirLabel}} <small>{{.L.logDirHelp}}</small>
       <input type="text" name="chatlog_dir" value="{{.ChatlogDir}}" autocomplete="off">
     </label>
-    <button type="submit">Enregistrer</button>
+    <button type="submit">{{.L.save}}</button>
   </form>
 </details>
 </body>

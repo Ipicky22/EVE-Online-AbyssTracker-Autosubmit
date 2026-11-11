@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -71,6 +71,9 @@ func defaultChatlogDir() string {
 	return candidates[0]
 }
 
+// errNoLocalLog: the folder holds no Local log yet, EVE has probably not been started.
+var errNoLocalLog = errors.New("no Local log found")
+
 // localTail follows the most recent Local log of a folder.
 type localTail struct {
 	dir    string
@@ -95,7 +98,7 @@ func (t *localTail) read() (events []LocalEvent, fresh bool, char Character, err
 		}
 	}
 	if len(names) == 0 {
-		return nil, false, char, fmt.Errorf("aucun journal Local dans %s : lance EVE", t.dir)
+		return nil, false, char, errNoLocalLog
 	}
 	// shortcut: the name starts with the date, so the last one alphabetically is the most recent.
 	// One character at a time; with several clients open, the file will have to be chosen per character.

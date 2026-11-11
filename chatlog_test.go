@@ -60,7 +60,7 @@ func TestLocalTail(t *testing.T) {
 	dir := t.TempDir()
 	tail := &localTail{dir: dir}
 	if _, _, _, err := tail.read(); err == nil {
-		t.Fatal("un dossier sans journal Local doit rendre une erreur")
+		t.Fatal("a folder without a Local log must return an error")
 	}
 
 	old := filepath.Join(dir, "Local_20261110_090000_90000001.txt")
@@ -72,30 +72,30 @@ func TestLocalTail(t *testing.T) {
 
 	events, fresh, char, err := tail.read()
 	if err != nil || !fresh || len(events) != 1 || events[0].System != "Alillere" {
-		t.Fatalf("1re lecture: events=%+v fresh=%v err=%v", events, fresh, err)
+		t.Fatalf("first read: events=%+v fresh=%v err=%v", events, fresh, err)
 	}
 	if char != (Character{ID: 90000001, Name: "Test Pilot"}) {
-		t.Errorf("personnage = %+v", char)
+		t.Errorf("character = %+v", char)
 	}
 
 	// Nothing new, then a line written in two parts: it only counts once complete.
 	if events, fresh, _, _ = tail.read(); len(events) != 0 || fresh {
-		t.Fatalf("lecture sans nouveauté: events=%+v fresh=%v", events, fresh)
+		t.Fatalf("read with nothing new: events=%+v fresh=%v", events, fresh)
 	}
 	appendUTF16(t, path, "\ufeff[ 2026.11.11 12:56:51 ] Système EVE > Canal changé en Lo")
 	if events, _, _, _ = tail.read(); len(events) != 0 {
-		t.Fatalf("ligne incomplète lue: %+v", events)
+		t.Fatalf("incomplete line was read: %+v", events)
 	}
 	appendUTF16(t, path, "cal\u00a0: Inconnu\r\n\ufeff[ 2026.11.11 13:07:57 ] Système EVE > Canal changé en Local\u00a0: Alillere*\r\n")
 	events, _, _, _ = tail.read()
 	if len(events) != 2 || !events[0].Abyss || events[1].Abyss || events[1].At.Sub(events[0].At) != 666*time.Second {
-		t.Fatalf("run lu: %+v", events)
+		t.Fatalf("run read: %+v", events)
 	}
 
 	// New EVE login: a more recent file takes over.
 	appendUTF16(t, filepath.Join(dir, "Local_20261111_200000_90000002.txt"), header+"\ufeff[ 2026.11.11 20:00:03 ] EVE System > Channel changed to Local : Amarr\r\n")
 	events, fresh, char, _ = tail.read()
 	if !fresh || len(events) != 1 || events[0].System != "Amarr" || char.ID != 90000002 {
-		t.Fatalf("bascule de fichier: events=%+v fresh=%v char=%+v", events, fresh, char)
+		t.Fatalf("file switch: events=%+v fresh=%v char=%+v", events, fresh, char)
 	}
 }

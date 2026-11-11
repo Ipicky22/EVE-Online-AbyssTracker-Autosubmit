@@ -22,7 +22,8 @@ const (
 type Outcome struct {
 	Kind OutcomeKind
 	Run  *Run
-	Msg  string
+	Msg  string // key in messages, translated when shown
+	Args []any
 }
 
 type trackerState int
@@ -78,11 +79,11 @@ func (t *Tracker) OnLocal(e LocalEvent, seen time.Time) []Outcome {
 }
 
 func (t *Tracker) enter(at time.Time) []Outcome {
-	out := t.dropAwaiting("nouveau run lancé sans copie de soute")
+	out := t.dropAwaiting("notSentNewRun")
 	t.state, t.entry = inAbyss, t.system
 	t.run, t.late = Run{Start: at}, nil
 	if t.base == nil {
-		out = append(out, Outcome{Kind: Notify, Msg: "Run détecté sans copie de soute au départ : il ne sera pas envoyé."})
+		out = append(out, Outcome{Kind: Notify, Msg: "noBaseAtStart"})
 	}
 	return out
 }
@@ -92,7 +93,7 @@ func (t *Tracker) exit(e LocalEvent, seen time.Time) []Outcome {
 	t.system = e.System
 	if t.ignore {
 		t.state, t.ignore = idle, false
-		return []Outcome{{Kind: Notify, Msg: "Run déjà en cours au démarrage de la session : ignoré. Copie ta soute pour le prochain."}}
+		return []Outcome{{Kind: Notify, Msg: "midRunIgnored"}}
 	}
 	t.run.Duration = e.At.Sub(t.run.Start)
 	// Death in the Abyss: the capsule is destroyed too, the character wakes up in their clone.
@@ -101,12 +102,12 @@ func (t *Tracker) exit(e LocalEvent, seen time.Time) []Outcome {
 		t.state, t.base = idle, nil
 		run := t.run
 		run.Gained, run.Lost = Cargo{}, Cargo{}
-		return []Outcome{{Kind: Complete, Run: &run, Msg: "Run perdu (mort dans l'Abysse)."}}
+		return []Outcome{{Kind: Complete, Run: &run, Msg: "runLost"}}
 	}
 	if t.base == nil {
 		t.state = idle
 		run := t.run
-		return []Outcome{{Kind: Incomplete, Run: &run, Msg: "Run non envoyé : pas de copie de soute au départ. Copie ta soute maintenant pour le prochain."}}
+		return []Outcome{{Kind: Incomplete, Run: &run, Msg: "notSentNoBase"}}
 	}
 	t.state = awaitingLoot
 	t.run.Success = true
@@ -116,35 +117,35 @@ func (t *Tracker) exit(e LocalEvent, seen time.Time) []Outcome {
 			return out
 		}
 	}
-	return []Outcome{{Kind: Notify, Msg: "Run terminé. Copie ta soute (Ctrl+A, Ctrl+C)."}}
+	return []Outcome{{Kind: Notify, Msg: "runDoneCopy"}}
 }
 
 // moved: the character changed system outside a run. The log does not say whether they docked on the way,
 // so the known cargo is no longer reliable.
 func (t *Tracker) moved() []Outcome {
-	out := t.dropAwaiting("changement de système avant la copie de soute")
+	out := t.dropAwaiting("notSentMoved")
 	if t.base != nil {
 		t.base = nil
-		out = append(out, Outcome{Kind: Notify, Msg: "Changement de système : recopie ta soute avant le prochain run."})
+		out = append(out, Outcome{Kind: Notify, Msg: "movedRecopy"})
 	}
 	return out
 }
 
 // dropAwaiting gives up the run waiting for its loot: the cargo may have changed, the diff would be unreliable.
-func (t *Tracker) dropAwaiting(reason string) []Outcome {
+func (t *Tracker) dropAwaiting(msg string) []Outcome {
 	if t.state != awaitingLoot {
 		return nil
 	}
 	run := t.run
 	t.state, t.base = idle, nil
-	return []Outcome{{Kind: Incomplete, Run: &run, Msg: "Run non envoyé : " + reason + "."}}
+	return []Outcome{{Kind: Incomplete, Run: &run, Msg: msg}}
 }
 
 func (t *Tracker) OnCargo(c Cargo, at time.Time) []Outcome {
 	switch t.state {
 	case idle:
 		t.base = c
-		return []Outcome{{Kind: Notify, Msg: "Soute de départ enregistrée."}}
+		return []Outcome{{Kind: Notify, Msg: "baseSaved"}}
 	case inAbyss:
 		t.late, t.lateAt = c, at
 	case awaitingLoot:
@@ -162,5 +163,5 @@ func (t *Tracker) OnCargo(c Cargo, at time.Time) []Outcome {
 
 // Stop ends the session: a run still waiting for its loot will never be completed.
 func (t *Tracker) Stop() []Outcome {
-	return t.dropAwaiting("session terminée avant la copie de soute")
+	return t.dropAwaiting("notSentStopped")
 }

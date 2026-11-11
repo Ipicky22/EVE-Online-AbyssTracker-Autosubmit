@@ -64,6 +64,11 @@ func (f *feed) expect(t *testing.T, complete, incomplete int) {
 	if c, i := len(f.runs(Complete)), len(f.runs(Incomplete)); c != complete || i != incomplete {
 		t.Fatalf("complete=%d incomplete=%d, want %d/%d", c, i, complete, incomplete)
 	}
+	for _, o := range f.out {
+		if _, ok := messages[o.Msg]; !ok && o.Msg != "" {
+			t.Errorf("outcome message %q has no translation", o.Msg)
+		}
+	}
 }
 
 var (
@@ -87,7 +92,7 @@ func TestChainedRunsReuseLastCopy(t *testing.T) {
 	f := newFeed().cargo(before).run(home).cargo(after).run(home).cargo(Cargo{"Ammo": 60, "Loot": 9})
 	f.expect(t, 2, 0)
 	if got := f.runs(Complete)[1].Gained; !reflect.DeepEqual(got, Cargo{"Loot": 4}) {
-		t.Errorf("2e run gained=%v", got)
+		t.Errorf("2nd run gained=%v", got)
 	}
 }
 
@@ -95,7 +100,7 @@ func TestDeathIsExitInAnotherSystem(t *testing.T) {
 	f := newFeed().cargo(before).run(other)
 	f.expect(t, 1, 0)
 	if r := f.runs(Complete)[0]; r.Success || len(r.Gained) != 0 {
-		t.Fatalf("run = %+v, want un run perdu sans butin", r)
+		t.Fatalf("run = %+v, want a lost run without loot", r)
 	}
 	// The starting cargo is no longer valid: the next run must not be sent.
 	f.run(other).cargo(after)

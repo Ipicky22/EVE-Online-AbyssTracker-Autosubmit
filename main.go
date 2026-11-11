@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -14,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -40,6 +40,7 @@ type Session struct {
 type Config struct {
 	APIKey     string
 	ChatlogDir string // empty = EVE's default folder
+	Lang       string // interface language, see langs
 	Session    Session
 }
 
@@ -73,8 +74,8 @@ type App struct {
 }
 
 func main() {
-	dryRun := flag.Bool("dry-run", false, "affiche les runs dans le journal au lieu de les envoyer")
-	noOpen := flag.Bool("no-open", false, "n'ouvre pas la page dans le navigateur au lancement")
+	dryRun := flag.Bool("dry-run", false, "write runs to the log instead of sending them")
+	noOpen := flag.Bool("no-open", false, "do not open the page in the browser at startup")
 	flag.Parse()
 
 	base, err := os.UserConfigDir()
@@ -103,6 +104,9 @@ func main() {
 	}
 	a.load("config.json", &a.cfg)
 	a.load("names.json", &a.names)
+	if !slices.Contains(langs, a.cfg.Lang) {
+		a.cfg.Lang = langs[0]
+	}
 	if a.cfg.Session.Weather == "" {
 		a.cfg.Session = Session{Weather: "Exotic", Hull: hullValues[0]}
 	}
@@ -112,7 +116,7 @@ func main() {
 	if !*noOpen {
 		openBrowser(pageURL)
 	}
-	log.Printf("abyssup prêt sur %s (dry-run=%v)", pageURL, a.dryRun)
+	log.Printf("abyssup ready on %s (dry-run=%v)", pageURL, a.dryRun)
 	log.Fatal(http.Serve(ln, a.routes()))
 }
 
@@ -125,7 +129,7 @@ func (a *App) save(name string, v any) {
 	// 0600: config.json holds the Abyss Tracker token.
 	// shortcut: stored in plain text in the user profile (like gh or aws); switch to DPAPI if the PC is shared.
 	if err := os.WriteFile(filepath.Join(a.dir, name), marshal(v), 0o600); err != nil {
-		log.Printf("écriture %s: %v", name, err)
+		log.Printf("writing %s: %v", name, err)
 	}
 }
 
@@ -135,23 +139,28 @@ func (a *App) active() bool {
 	return a.tracker != nil
 }
 
-func (a *App) setStatus(msg string) {
+// say translates a message into the interface language, shows it as the page status and logs it.
+// It returns the text so the caller can also send it as a notification. Must be called without the lock.
+func (a *App) say(key string, args ...any) string {
 	a.mu.Lock()
+	msg := tr(a.cfg.Lang, key, args...)
 	a.status = time.Now().Format("15:04:05") + " — " + msg
 	a.mu.Unlock()
 	log.Print(msg)
+	return msg
 }
 
 // startSession starts (or updates) the session. Called by the page.
-func (a *App) startSession(s Session) error {
+// On refusal it returns the key and arguments of the message to show.
+func (a *App) startSession(s Session) (errKey string, errArgs []any) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	dir := a.chatlogDir()
 	if st, err := os.Stat(dir); err != nil || !st.IsDir() {
-		return fmt.Errorf("dossier des journaux EVE introuvable : %s (Réglages)", dir)
+		return "errNoLogDir", []any{dir}
 	}
 	if a.cfg.APIKey == "" && !a.dryRun {
-		return errors.New("renseigne d'abord ton jeton Abyss Tracker (Réglages)")
+		return "errNoToken", nil
 	}
 	a.cfg.Session = s
 	a.save("config.json", a.cfg)
@@ -161,7 +170,7 @@ func (a *App) startSession(s Session) error {
 		go a.tail(ctx, dir)
 		go a.flushPending()
 	}
-	return nil
+	return "", nil
 }
 
 func (a *App) stopSession() {
@@ -214,7 +223,11 @@ func (a *App) tail(ctx context.Context, dir string) {
 		if err != nil {
 			if err.Error() != lastErr { // the same error comes back every second: report it only once
 				lastErr = err.Error()
-				a.setStatus("Journal Local illisible : " + lastErr)
+				if errors.Is(err, errNoLocalLog) {
+					a.say("noLocalLog", dir)
+				} else {
+					a.say("logUnreadable", err)
+				}
 			}
 		} else {
 			lastErr = ""
@@ -231,7 +244,7 @@ func (a *App) tail(ctx context.Context, dir string) {
 				if len(events) > 0 {
 					tr.SetLocation(events[len(events)-1])
 				}
-				return []Outcome{{Kind: Notify, Msg: "Journal Local suivi : " + char.Name + "."}}
+				return []Outcome{{Kind: Notify, Msg: "logFollowed", Args: []any{char.Name}}}
 			})
 		}
 		select {
@@ -247,33 +260,46 @@ func (a *App) work() {
 	for j := range a.jobs {
 		switch j.Kind {
 		case Notify:
-			a.setStatus(j.Msg)
-			notify(j.Msg, "")
+			notify(a.say(j.Msg, j.Args...), "")
 		case Incomplete:
-			name := j.Run.Start.Format("20060102-150405") + ".json"
-			a.save(filepath.Join("incomplete", name), j)
-			a.setStatus(j.Msg)
-			notify(j.Msg, "")
+			a.incomplete(j)
 		case Complete:
 			a.complete(j)
 		}
 	}
 }
 
+// incomplete tells the user why a run is not sent and keeps it on disk, with the message as shown.
+func (a *App) incomplete(j job) {
+	msg := a.say(j.Msg, j.Args...)
+	notify(msg, "")
+	j.Kind, j.Msg, j.Args = Incomplete, msg, nil
+	a.save(filepath.Join("incomplete", j.Run.Start.Format("20060102-150405")+".json"), j)
+}
+
+// lang returns the interface language. Must be called without the lock.
+func (a *App) lang() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.cfg.Lang
+}
+
 func (a *App) complete(j job) {
-	items, err := a.resolve(j.Run)
-	if err != nil {
-		j.Msg = "Run non envoyé : " + err.Error()
-		j.Kind = Incomplete
-		a.save(filepath.Join("incomplete", j.Run.Start.Format("20060102-150405")+".json"), j)
-		a.setStatus(j.Msg)
-		notify(j.Msg, "")
+	items, missing, err := a.resolve(j.Run)
+	switch {
+	case err != nil:
+		j.Msg, j.Args = "notSentError", []any{err}
+	case len(missing) > 0:
+		j.Msg, j.Args = "notSentUnknownItems", []any{strings.Join(missing, ", ")}
+	}
+	if err != nil || len(missing) > 0 {
+		a.incomplete(j)
 		return
 	}
 	t := buildTelemetry(j.Run, j.Session, j.Character, items)
 	if a.dryRun {
-		a.setStatus(fmt.Sprintf("[dry-run] run de %v non envoyé :\n%s", j.Run.Duration, marshal(t)))
-		notify(fmt.Sprintf("[dry-run] run de %v détecté.", j.Run.Duration), "")
+		a.say("dryRunStatus", j.Run.Duration, marshal(t)) // the status keeps the full payload
+		notify(tr(a.lang(), "dryRunNotify", j.Run.Duration), "")
 		return
 	}
 	a.save(filepath.Join("pending", t.RecordUUID+".json"), t)
@@ -281,8 +307,9 @@ func (a *App) complete(j job) {
 }
 
 // resolve returns the EVE type of each gained or lost item, relying on the disk cache.
-func (a *App) resolve(run *Run) (map[string]Item, error) {
-	items := map[string]Item{}
+// missing lists the names EVE does not know.
+func (a *App) resolve(run *Run) (items map[string]Item, missing []string, err error) {
+	items = map[string]Item{}
 	var unknown []string
 	a.mu.Lock()
 	for _, c := range []Cargo{run.Gained, run.Lost} {
@@ -296,10 +323,9 @@ func (a *App) resolve(run *Run) (map[string]Item, error) {
 	}
 	a.mu.Unlock()
 	if len(unknown) == 0 {
-		return items, nil
+		return items, nil, nil
 	}
 	var found map[string]Item
-	var err error
 	// shortcut: 3 inline attempts rather than a retry queue.
 	for range 3 {
 		if found, err = resolveNames(unknown); err == nil {
@@ -308,7 +334,7 @@ func (a *App) resolve(run *Run) (map[string]Item, error) {
 		time.Sleep(3 * time.Second)
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	a.mu.Lock()
 	for name, it := range found {
@@ -316,17 +342,13 @@ func (a *App) resolve(run *Run) (map[string]Item, error) {
 	}
 	a.save("names.json", a.names)
 	a.mu.Unlock()
-	var missing []string
 	for _, name := range unknown {
 		if _, ok := found[name]; !ok {
 			missing = append(missing, name)
 		}
 	}
-	if len(missing) > 0 {
-		sort.Strings(missing)
-		return nil, fmt.Errorf("objets inconnus d'EVE (%s) : la copie n'était peut-être pas une soute", strings.Join(missing, ", "))
-	}
-	return items, nil
+	sort.Strings(missing)
+	return items, missing, nil
 }
 
 // flushPending sends the pending runs, oldest first.
@@ -355,14 +377,13 @@ func (a *App) flushPending() {
 		switch {
 		case err == nil:
 			os.Rename(path, filepath.Join(a.dir, "sent", e.Name()))
-			a.setStatus("Run envoyé : " + runURL + runID)
-			notify("Run envoyé sur Abyss Tracker.", runURL+runID)
+			a.say("sentStatus", runURL+runID) // the status keeps the link
+			notify(tr(a.lang(), "sentNotify"), runURL+runID)
 		case errors.Is(err, errRejected):
 			os.Rename(path, filepath.Join(a.dir, "rejected", e.Name()))
-			a.setStatus(err.Error())
-			notify(err.Error(), "")
+			notify(a.say("rejected", strings.TrimPrefix(err.Error(), errRejected.Error()+": ")), "")
 		default:
-			a.setStatus(fmt.Sprintf("Envoi impossible, le run reste en attente : %v", err))
+			a.say("sendFailed", err)
 			return // transient failure: keep the order and retry at the next run
 		}
 	}
@@ -379,6 +400,6 @@ func openBrowser(url string) {
 		cmd = exec.Command("xdg-open", url)
 	}
 	if err := cmd.Start(); err != nil {
-		log.Printf("ouverture du navigateur: %v", err)
+		log.Printf("opening browser: %v", err)
 	}
 }

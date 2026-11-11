@@ -11,11 +11,11 @@ func TestParseCargo(t *testing.T) {
 		text string
 		want Cargo
 	}{
-		{"anglais", "Tranquil Exotic Filament\t2\tAbyssal Filaments\r\nScourge Light Missile\t1,234\tLight Missile\r\n",
+		{"English", "Tranquil Exotic Filament\t2\tAbyssal Filaments\r\nScourge Light Missile\t1,234\tLight Missile\r\n",
 			Cargo{"Tranquil Exotic Filament": 2, "Scourge Light Missile": 1234}},
-		{"français, espace insécable", "Filament exotique placide\t1\nMissile léger Scourge\t1 234\n",
+		{"French, non-breaking space", "Filament exotique placide\t1\nMissile léger Scourge\t1 234\n",
 			Cargo{"Filament exotique placide": 1, "Missile léger Scourge": 1234}},
-		{"quantité vide = 1, piles additionnées", "Small Shield Booster I\t\tShield Booster\nTritanium\t5\nTritanium\t7",
+		{"empty quantity = 1, stacks added up", "Small Shield Booster I\t\tShield Booster\nTritanium\t5\nTritanium\t7",
 			Cargo{"Small Shield Booster I": 1, "Tritanium": 12}},
 	}
 	for _, c := range cases {
@@ -29,13 +29,13 @@ func TestParseCargo(t *testing.T) {
 func TestParseCargoRejectsOtherText(t *testing.T) {
 	for _, text := range []string{
 		"",
-		"mon mot de passe",
+		"my password",
 		"https://abysstracker.com/run/123",
-		"Tritanium\tbeaucoup",
-		"colonne\tunique\nligne sans tabulation",
+		"Tritanium\tplenty",
+		"single\tcolumn\nline without a tab",
 	} {
 		if c, ok := parseCargo(text); ok {
-			t.Errorf("%q accepté comme soute: %v", text, c)
+			t.Errorf("%q accepted as a cargo copy: %v", text, c)
 		}
 	}
 }

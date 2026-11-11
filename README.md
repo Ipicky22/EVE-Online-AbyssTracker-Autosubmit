@@ -8,8 +8,8 @@ It never touches the EVE client: it only reads the Local chat log that EVE write
 
 ## Usage
 
-1. Run `abyssup.exe`: the page `http://localhost:47813` opens. Its labels are in French.
-2. Pick the weather, tier, hull and fit, then click « Démarrer la session » (start the session).
+1. Run `abyssup.exe`: the page `http://localhost:47813` opens.
+2. Pick the weather, tier, hull and fit, then click **Start session**.
 3. Copy your cargo hold (`Ctrl+A`, `Ctrl+C`) before the first run.
 4. After each run, copy your cargo hold again: the run is sent to Abyss Tracker.
 5. After changing system or docking, copy your cargo hold again before the next run.
@@ -22,11 +22,12 @@ Both English and French EVE clients are supported; item names are sent in Englis
 ## Setup (once)
 
 1. Create a token at `abysstracker.com/my-account/personal-access-tokens`.
-2. On the page, open « Réglages » (settings), paste the token and save.
+2. On the page, open **Settings**, paste the token and save.
 
 No EVE developer application and no character login are needed.
 EVE must log chat to file (it does by default).
-If your logs are not in `Documents\EVE\logs\Chatlogs`, set the folder in « Réglages ».
+If your logs are not in `Documents\EVE\logs\Chatlogs`, set the folder in **Settings**.
+The interface is available in English and French (**Settings → Language**).
 
 ## Options
 

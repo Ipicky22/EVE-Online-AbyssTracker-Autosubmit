@@ -45,10 +45,10 @@ func fetchFits(apiKey string) ([]Fit, error) {
 		Fits    []Fit
 	}
 	if err := doJSON(req, &res); err != nil {
-		return nil, fmt.Errorf("liste des fits: %w", err)
+		return nil, fmt.Errorf("fits list: %w", err)
 	}
 	if res.Error {
-		return nil, fmt.Errorf("liste des fits: %s", res.Message)
+		return nil, fmt.Errorf("fits list: %s", res.Message)
 	}
 	return res.Fits, nil
 }
@@ -123,7 +123,7 @@ func toLoot(c Cargo, items map[string]Item) []lootItem {
 }
 
 // errRejected: the server rejected the run; resending it unchanged would be pointless.
-var errRejected = errors.New("run refusé par Abyss Tracker")
+var errRejected = errors.New("run rejected by Abyss Tracker")
 
 func sendTelemetry(apiKey string, body []byte) (runID string, err error) {
 	req, _ := http.NewRequest("POST", ewbBase+"/abyss-tracker/telemetry", bytes.NewReader(body))

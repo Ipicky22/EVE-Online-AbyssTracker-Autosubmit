@@ -18,6 +18,10 @@ var pageTmpl = template.Must(template.New("page").Parse(pageHTML))
 var tierNames = []string{"Tranquil", "Calm", "Agitated", "Fierce", "Raging", "Chaotic", "Cataclysmic"}
 
 type pageData struct {
+	L          map[string]string // interface texts in the current language
+	Lang       string
+	Langs      []string
+	LangNames  map[string]string
 	Status     string
 	Active     bool
 	DryRun     bool
@@ -42,7 +46,7 @@ func (a *App) routes() http.Handler {
 	protected := http.NewCrossOriginProtection().Handler(mux)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Host != "localhost:47813" && r.Host != listenAddr {
-			http.Error(w, "hôte refusé", http.StatusForbidden)
+			http.Error(w, "forbidden host", http.StatusForbidden)
 			return
 		}
 		protected.ServeHTTP(w, r)
@@ -67,6 +71,7 @@ func (a *App) handlePage(w http.ResponseWriter, r *http.Request) {
 		a.fits = fits
 	}
 	d := pageData{
+		L: catalog(a.cfg.Lang), Lang: a.cfg.Lang, Langs: langs, LangNames: langNames,
 		Status: a.status, Active: a.tracker != nil, DryRun: a.dryRun,
 		HasKey: a.cfg.APIKey != "", ChatlogDir: a.chatlogDir(),
 		S: a.cfg.Session, Fits: a.fits, FitsErr: fitsErr,
@@ -95,9 +100,12 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 	} else {
 		a.cfg.ChatlogDir = dir
 	}
+	if lang := r.FormValue("lang"); slices.Contains(langs, lang) {
+		a.cfg.Lang = lang
+	}
 	a.save("config.json", a.cfg)
 	a.mu.Unlock()
-	a.setStatus("Réglages enregistrés.")
+	a.say("settingsSaved")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -105,7 +113,7 @@ func (a *App) handleStart(w http.ResponseWriter, r *http.Request) {
 	tier, _ := strconv.Atoi(r.FormValue("tier"))
 	s := Session{Weather: r.FormValue("weather"), Tier: tier, Hull: r.FormValue("hull")}
 	if !slices.Contains(weatherValues, s.Weather) || tier < 0 || tier >= len(tierNames) || !slices.Contains(hullValues, s.Hull) {
-		http.Error(w, "paramètres de session invalides", http.StatusBadRequest)
+		http.Error(w, "invalid session settings", http.StatusBadRequest)
 		return
 	}
 	a.mu.Lock()
@@ -115,16 +123,16 @@ func (a *App) handleStart(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	a.mu.Unlock()
-	if err := a.startSession(s); err != nil {
-		a.setStatus(err.Error())
+	if errKey, errArgs := a.startSession(s); errKey != "" {
+		a.say(errKey, errArgs...)
 	} else {
-		a.setStatus("Session en cours : " + s.Weather + " T" + strconv.Itoa(s.Tier) + ". Copie ta soute avant le premier run.")
+		a.say("sessionStarted", s.Weather, s.Tier)
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (a *App) handleStop(w http.ResponseWriter, r *http.Request) {
 	a.stopSession()
-	a.setStatus("Session terminée.")
+	a.say("sessionEnded")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
