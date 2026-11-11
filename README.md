@@ -1,59 +1,72 @@
 # EVE Online AbyssTracker Autosubmit
 
-Envoie tout seul les runs Abyss d'EVE Online sur [Abyss Tracker](https://abysstracker.com).
-Le programme s'appelle `abyssup`.
-Il ne touche jamais au client EVE : il lit la position du personnage via l'API EVE (ESI) et le presse-papiers Windows.
+Submits your EVE Online Abyssal Deadspace runs to [Abyss Tracker](https://abysstracker.com) automatically.
+The program is called `abyssup`.
+It never touches the EVE client: it only reads the character's location through the EVE API (ESI) and the Windows clipboard.
+
+> **Status: work in progress.** Uploading is not proven end to end yet, see [Verification status](#verification-status).
 
 ## Usage
 
-1. Lancer `abyssup.exe` : la page `http://localhost:47813` s'ouvre.
-2. Choisir météo, tier, coque, fit, puis « Démarrer la session ».
-3. Copier la soute (`Ctrl+A`, `Ctrl+C`) avant le premier run.
-4. Après chaque run, recopier la soute : le run part sur Abyss Tracker.
-5. Après un passage en station, recopier la soute avant le run suivant.
+1. Run `abyssup.exe`: the page `http://localhost:47813` opens. Its labels are in French.
+2. Pick the weather, tier, hull and fit, then click « Démarrer la session » (start the session).
+3. Copy your cargo hold (`Ctrl+A`, `Ctrl+C`) before the first run.
+4. After each run, copy your cargo hold again: the run is sent to Abyss Tracker.
+5. After docking, copy your cargo hold again before the next run.
 
-Les runs sont publiés en public.
-Un run sans copie de soute fiable n'est pas envoyé : il est rangé dans `incomplete/`.
+Runs are published as public.
+A run without a reliable cargo copy is not sent: it is stored in `incomplete/`.
 
-## Installation (une fois)
+Both English and French EVE clients are supported; item names are sent in English.
 
-1. Créer un jeton sur `abysstracker.com/my-account/personal-access-tokens`.
-2. Créer une application sur `developers.eveonline.com` :
+## Setup (once)
+
+1. Create a token at `abysstracker.com/my-account/personal-access-tokens`.
+2. Create an application at `developers.eveonline.com`:
    callback `http://localhost:47813/callback`, scope `esi-location.read_location.v1`.
-3. Dans la page, ouvrir « Réglages », coller le jeton et l'identifiant de l'application, enregistrer.
-4. Cliquer « Connecter le personnage EVE ».
+3. On the page, open « Réglages » (settings), paste the token and the application's client ID, and save.
+4. Click « Connecter le personnage EVE » (connect the EVE character).
 
 ## Options
 
-- `-dry-run` : écrit les runs dans le journal au lieu de les envoyer.
-- `-no-open` : n'ouvre pas le navigateur au lancement.
+- `-dry-run`: writes runs to the log instead of sending them.
+- `-no-open`: does not open the browser at startup.
 
-## Données
+## Data
 
-Dans `%APPDATA%\abyssup\` (`~/.config/abyssup/` sous Linux) :
-`config.json`, `token.json`, `names.json` (cache des noms d'objets), `abyssup.log`,
-et les dossiers `pending/`, `sent/`, `incomplete/`, `rejected/`.
+In `%APPDATA%\abyssup\` (`~/.config/abyssup/` on Linux):
+`config.json`, `token.json`, `names.json` (item name cache), `abyssup.log`,
+and the folders `pending/`, `sent/`, `incomplete/`, `rejected/`.
 
-## Développement
+Tokens are stored in plain text in your user profile, never in this repository.
+
+## How it works
+
+- **Run start, end and duration**: ESI location polled every 5 seconds during a session. A solar system ID between 32000001 and 32000200 means the character is in the Abyss. Accuracy is about 5 to 10 seconds.
+- **Death**: leaving the Abyss directly into a docked state.
+- **Loot**: difference between the cargo copy made before the run and the one made after it.
+- **Weather, tier, hull, fit**: taken from the session settings.
+
+## Development
 
 ```
 go test ./...
 GOOS=windows go build -ldflags "-H=windowsgui" -o abyssup.exe .
 ```
 
-## État des vérifications
+## Verification status
 
-Vérifié avec un vrai jeton (2026-11-11) :
+Verified with a real token (2026-11-11):
 
-- le jeton passe dans l'en-tête `X-API-KEY` ;
-- `fits/list` rend les fits du compte avec leur vaisseau ;
-- `POST /v1/abyss-tracker/telemetry` répond `Error: false` avec un `RunId`.
+- the token is accepted in the `X-API-KEY` header;
+- `fits/list` returns the account's fits with their ship;
+- `POST /v1/abyss-tracker/telemetry` answers `Error: false` with a `RunId`.
 
-**Bloquant** : les deux runs de test ainsi créés (`PRIVATE` puis `PUBLIC`) n'apparaissent ni sur le site,
-ni dans `get-runs`, ni dans `runs/{id}`. Tant que la cause n'est pas connue, l'envoi n'est pas prouvé de bout en bout.
+**Blocking**: the two test runs created this way (`PRIVATE`, then `PUBLIC`) show up neither on the site,
+nor in `get-runs`, nor in `runs/{id}`. Until the cause is known, uploading is not proven end to end.
 
-À confirmer ensuite :
+Still to confirm after that:
 
-- `cansSpawned` / `cansLooted` envoyés à 1 / 0 pour ne pas déclarer « tous les conteneurs pillés » ;
-- mort détectée par « sortie de l'Abysse directement amarré » : non testé en jeu ;
-- lecture du presse-papiers et notifications Windows : compilées, jamais exécutées sur un vrai Windows.
+- `cansSpawned` / `cansLooted` are sent as 1 / 0 so the run is not declared as "all cans looted";
+- death detected as "left the Abyss directly docked": not tested in game;
+- Windows clipboard reading and notifications: compiled, never run on a real Windows machine.
