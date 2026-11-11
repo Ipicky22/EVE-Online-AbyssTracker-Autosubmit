@@ -15,13 +15,16 @@ const (
 	runURL  = "https://abysstracker.com/run/"
 )
 
-// Valeurs envoyées à Abyss Tracker. La spec publique ne les liste pas :
-// à confirmer avec un vrai jeton (étape 0 du plan) avant le premier envoi réel.
+// Valeurs envoyées à Abyss Tracker. La spec publique ne les liste pas : elles viennent de l'ancien code
+// du site (molbal/abyss-tracker, CreateRunHelper.php) et d'un run de test accepté par le serveur.
 var (
-	privacyValues = []string{"public", "anonymous", "private"}
-	hullValues    = []string{"cruiser", "destroyer", "frigate"}
+	hullValues    = []string{"Frigate", "Destroyer", "Cruiser"}                    // noms du champ HullType des runs
 	weatherValues = []string{"Electrical", "Dark", "Exotic", "Firestorm", "Gamma"} // confirmées par les runs publics
 )
+
+// Les runs partent toujours en public : un run envoyé en PRIVATE est accepté par le serveur
+// mais n'apparaît nulle part sur le site, même pour son auteur.
+const privacy = "PUBLIC"
 
 // Fit est un fit du compte Abyss Tracker.
 type Fit struct {
@@ -86,7 +89,7 @@ type telemetry struct {
 func buildTelemetry(run *Run, s Session, ch Character, items map[string]Item) telemetry {
 	t := telemetry{
 		RecordUUID:         newUUID(),
-		Privacy:            s.Privacy,
+		Privacy:            privacy,
 		ShipType:           s.Hull,
 		RunStartTime:       run.Start.Unix(),
 		RunDurationSeconds: int(run.Duration.Seconds()),
@@ -95,9 +98,10 @@ func buildTelemetry(run *Run, s Session, ch Character, items map[string]Item) te
 		CharacterID:        ch.ID,
 		CharacterName:      ch.Name,
 		Success:            run.Success,
-		// shortcut: les conteneurs ne sont pas observables sans lire l'écran ; 0/0 en attendant de savoir
-		// ce que le site en fait (étape 0). À remplacer par un choix de session si le site l'exige.
-		CansSpawned: 0,
+		// shortcut: les conteneurs ne sont pas observables sans lire l'écran. L'ancien code du site classe
+		// le run « tous les conteneurs pillés » quand les deux nombres sont égaux : 1/0 évite cette fausse
+		// déclaration. À remplacer par un choix de session si le classement obtenu ne convient pas.
+		CansSpawned: 1,
 		CansLooted:  0,
 		LootGained:  toLoot(run.Gained, items),
 		LootLost:    toLoot(run.Lost, items),

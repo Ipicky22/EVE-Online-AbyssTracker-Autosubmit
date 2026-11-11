@@ -31,7 +31,6 @@ type Session struct {
 	Weather    string
 	Tier       int
 	Hull       string
-	Privacy    string
 	FitID      string
 	FitName    string
 	ShipName   string
@@ -111,7 +110,7 @@ func main() {
 		a.tok = &tok
 	}
 	if a.cfg.Session.Weather == "" {
-		a.cfg.Session = Session{Weather: "Exotic", Hull: hullValues[0], Privacy: privacyValues[0]}
+		a.cfg.Session = Session{Weather: "Exotic", Hull: hullValues[0]}
 	}
 
 	go a.work()

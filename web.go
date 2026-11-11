@@ -31,7 +31,6 @@ type pageData struct {
 	Weathers  []string
 	Tiers     []string
 	Hulls     []string
-	Privacies []string
 }
 
 func (a *App) routes() http.Handler {
@@ -74,7 +73,7 @@ func (a *App) handlePage(w http.ResponseWriter, r *http.Request) {
 		Status: a.status, Active: a.tracker != nil, DryRun: a.dryRun,
 		HasKey: a.cfg.APIKey != "", ClientID: a.cfg.ESIClientID, Redirect: pageURL + "/callback",
 		S: a.cfg.Session, Fits: a.fits, FitsErr: fitsErr,
-		Weathers: weatherValues, Tiers: tierNames, Hulls: hullValues, Privacies: privacyValues,
+		Weathers: weatherValues, Tiers: tierNames, Hulls: hullValues,
 	}
 	if a.tok != nil {
 		d.Character = a.tok.CharacterName
@@ -138,9 +137,8 @@ func (a *App) handleCallback(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) handleStart(w http.ResponseWriter, r *http.Request) {
 	tier, _ := strconv.Atoi(r.FormValue("tier"))
-	s := Session{Weather: r.FormValue("weather"), Tier: tier, Hull: r.FormValue("hull"), Privacy: r.FormValue("privacy")}
-	if !slices.Contains(weatherValues, s.Weather) || tier < 0 || tier >= len(tierNames) ||
-		!slices.Contains(hullValues, s.Hull) || !slices.Contains(privacyValues, s.Privacy) {
+	s := Session{Weather: r.FormValue("weather"), Tier: tier, Hull: r.FormValue("hull")}
+	if !slices.Contains(weatherValues, s.Weather) || tier < 0 || tier >= len(tierNames) || !slices.Contains(hullValues, s.Hull) {
 		http.Error(w, "paramètres de session invalides", http.StatusBadRequest)
 		return
 	}

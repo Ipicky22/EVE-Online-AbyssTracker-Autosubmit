@@ -45,18 +45,11 @@
       </select>
     </label>
   </div>
-  <div class="row">
-    <label>Coque
-      <select name="hull">
-        {{range .Hulls}}<option {{if eq . $.S.Hull}}selected{{end}}>{{.}}</option>{{end}}
-      </select>
-    </label>
-    <label>Visibilité
-      <select name="privacy">
-        {{range .Privacies}}<option {{if eq . $.S.Privacy}}selected{{end}}>{{.}}</option>{{end}}
-      </select>
-    </label>
-  </div>
+  <label>Coque
+    <select name="hull">
+      {{range .Hulls}}<option {{if eq . $.S.Hull}}selected{{end}}>{{.}}</option>{{end}}
+    </select>
+  </label>
   <label>Fit <small>{{if .FitsErr}}{{.FitsErr}}{{else if not .HasKey}}renseigne ton jeton Abyss Tracker pour lister tes fits{{end}}</small>
     <select name="fit">
       <option value="">Aucun</option>
