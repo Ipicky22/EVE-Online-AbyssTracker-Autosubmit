@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>abyssup</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 16px/1.5 system-ui, sans-serif; max-width: 34rem; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; margin-bottom: .25rem; }
+  form { display: grid; gap: .75rem; }
+  label { display: grid; gap: .25rem; font-weight: 600; }
+  select, input, button { font: inherit; padding: .5rem; }
+  button { cursor: pointer; }
+  .row { display: flex; gap: .75rem; flex-wrap: wrap; }
+  .row > * { flex: 1; }
+  .state { padding: .5rem .75rem; border-left: .25rem solid; margin: 1rem 0; }
+  .on { border-color: #2a9d4b; }
+  .off { border-color: #888; }
+  pre { white-space: pre-wrap; margin: 0; font: inherit; }
+  details { margin-top: 2rem; }
+  summary { cursor: pointer; font-weight: 600; margin-bottom: .75rem; }
+  small { font-weight: 400; opacity: .75; }
+</style>
+</head>
+<body>
+<h1>abyssup{{if .DryRun}} <small>(dry-run : rien n'est envoyé)</small>{{end}}</h1>
+
+<div class="state {{if .Active}}on{{else}}off{{end}}" role="status">
+  <strong>{{if .Active}}Session en cours{{else}}Pas de session{{end}}</strong>
+  — {{if .Character}}{{.Character}}{{else}}aucun personnage connecté{{end}}
+  {{if .Status}}<pre>{{.Status}}</pre>{{end}}
+</div>
+
+<form method="post" action="/session/start">
+  <div class="row">
+    <label>Météo
+      <select name="weather">
+        {{range .Weathers}}<option {{if eq . $.S.Weather}}selected{{end}}>{{.}}</option>{{end}}
+      </select>
+    </label>
+    <label>Tier
+      <select name="tier">
+        {{range $i, $n := .Tiers}}<option value="{{$i}}" {{if eq $i $.S.Tier}}selected{{end}}>T{{$i}} – {{$n}}</option>{{end}}
+      </select>
+    </label>
+  </div>
+  <div class="row">
+    <label>Coque
+      <select name="hull">
+        {{range .Hulls}}<option {{if eq . $.S.Hull}}selected{{end}}>{{.}}</option>{{end}}
+      </select>
+    </label>
+    <label>Visibilité
+      <select name="privacy">
+        {{range .Privacies}}<option {{if eq . $.S.Privacy}}selected{{end}}>{{.}}</option>{{end}}
+      </select>
+    </label>
+  </div>
+  <label>Fit <small>{{if .FitsErr}}{{.FitsErr}}{{else if not .HasKey}}renseigne ton jeton Abyss Tracker pour lister tes fits{{end}}</small>
+    <select name="fit">
+      <option value="">Aucun</option>
+      {{range .Fits}}<option value="{{.ID}}" {{if eq .ID $.S.FitID}}selected{{end}}>{{.Ship.Name}} — {{.Name}}</option>{{end}}
+    </select>
+  </label>
+  <button type="submit">{{if .Active}}Mettre à jour la session{{else}}Démarrer la session{{end}}</button>
+</form>
+{{if .Active}}
+<form method="post" action="/session/stop" style="margin-top:.75rem">
+  <button type="submit">Terminer la session</button>
+</form>
+{{end}}
+
+<details {{if or (not .HasKey) (not .Character)}}open{{end}}>
+  <summary>Réglages</summary>
+  <form method="post" action="/settings">
+    <label>Jeton Abyss Tracker <small>{{if .HasKey}}enregistré ; laisse vide pour le garder{{else}}à créer sur abysstracker.com → My account → Personal access tokens{{end}}</small>
+      <input type="password" name="api_key" autocomplete="off">
+    </label>
+    <label>Identifiant de l'application EVE <small>developers.eveonline.com, callback {{.Redirect}}, scope esi-location.read_location.v1</small>
+      <input type="text" name="esi_client_id" value="{{.ClientID}}" autocomplete="off">
+    </label>
+    <button type="submit">Enregistrer</button>
+  </form>
+  <p><a href="/login">{{if .Character}}Changer de personnage EVE{{else}}Connecter le personnage EVE{{end}}</a></p>
+</details>
+</body>
+</html>
