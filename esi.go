@@ -11,23 +11,23 @@ import (
 	"time"
 )
 
-// Seuls des appels ESI publics sont faits : aucune connexion du personnage n'est nécessaire.
+// Only public ESI calls are made: no character login is needed.
 const (
 	esiBase   = "https://esi.evetech.net/latest"
-	userAgent = "abyssup/0.1" // nom générique : aucune donnée personnelle envoyée à ESI
+	userAgent = "abyssup/0.1" // generic name: no personal data is sent to ESI
 )
 
 var httpClient = &http.Client{Timeout: 15 * time.Second}
 
-// Item est un type d'objet EVE avec son nom anglais, seul accepté par Abyss Tracker.
+// Item is an EVE item type with its English name, the only one Abyss Tracker accepts.
 type Item struct {
 	TypeID int
 	Name   string
 }
 
-// resolveNames convertit des noms affichés par le client en types EVE.
-// Le client peut être en anglais ou en français : on essaie l'anglais, puis le français pour le reste.
-// Les noms introuvables sont absents du résultat.
+// resolveNames converts names shown by the client into EVE types.
+// The client may be in English or French: try English first, then French for the rest.
+// Names that cannot be found are absent from the result.
 func resolveNames(names []string) (map[string]Item, error) {
 	found := map[string]Item{}
 	missing := names
@@ -52,10 +52,10 @@ func resolveNames(names []string) (map[string]Item, error) {
 	if len(found) == 0 {
 		return found, nil
 	}
-	// /universe/names rend toujours le nom anglais, quelle que soit la langue du client.
+	// /universe/names always returns the English name, whatever the client language.
 	ids := make([]int, 0, len(found))
 	for _, it := range found {
-		if !slices.Contains(ids, it.TypeID) { // ESI refuse les doublons (même objet copié sous ses deux noms)
+		if !slices.Contains(ids, it.TypeID) { // ESI rejects duplicates (same item copied under both its names)
 			ids = append(ids, it.TypeID)
 		}
 	}
@@ -80,9 +80,9 @@ func resolveNames(names []string) (map[string]Item, error) {
 	return found, nil
 }
 
-// universeIDs rend nom en minuscules -> typeID pour les noms connus dans la langue donnée.
+// universeIDs returns lowercase name -> typeID for the names known in the given language.
 func universeIDs(names []string, lang string) (map[string]int, error) {
-	// shortcut: ESI accepte 500 noms par appel ; une soute de run en compte quelques dizaines. Découper si ça change.
+	// shortcut: ESI accepts 500 names per call; a run's cargo has a few dozen. Chunk if that changes.
 	body, _ := json.Marshal(names)
 	req, _ := http.NewRequest("POST", esiBase+"/universe/ids/", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -103,7 +103,7 @@ func universeIDs(names []string, lang string) (map[string]int, error) {
 	return ids, nil
 }
 
-// httpError porte le code HTTP pour distinguer un refus (4xx) d'une panne passagère.
+// httpError carries the HTTP status to tell a rejection (4xx) from a transient failure.
 type httpError struct {
 	Status int
 	Body   string

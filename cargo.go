@@ -6,12 +6,12 @@ import (
 	"unicode"
 )
 
-// Cargo associe le nom affiché par le client (anglais ou français) à une quantité.
+// Cargo maps the item name shown by the client (English or French) to a quantity.
 type Cargo map[string]int
 
-// parseCargo reconnaît une copie de soute EVE (Ctrl+A, Ctrl+C) : une pile par ligne,
-// colonnes séparées par des tabulations, nom puis quantité.
-// Tout autre texte est refusé : le presse-papiers contient aussi ce que l'utilisateur copie ailleurs.
+// parseCargo recognises an EVE cargo hold copy (Ctrl+A, Ctrl+C): one stack per line,
+// tab-separated columns, name then quantity.
+// Any other text is rejected: the clipboard also holds whatever the user copies elsewhere.
 func parseCargo(text string) (Cargo, bool) {
 	cargo := Cargo{}
 	for line := range strings.SplitSeq(text, "\n") {
@@ -33,8 +33,8 @@ func parseCargo(text string) (Cargo, bool) {
 	return cargo, len(cargo) > 0
 }
 
-// parseQuantity accepte "1,234" (client anglais) et "1 234" avec espace insécable (client français).
-// Une quantité vide vaut 1 : le client n'affiche rien pour un objet non empilable.
+// parseQuantity accepts "1,234" (English client) and "1 234" with a non-breaking space (French client).
+// An empty quantity means 1: the client shows nothing for a non-stackable item.
 func parseQuantity(s string) (int, bool) {
 	var digits strings.Builder
 	for _, r := range s {
@@ -53,7 +53,7 @@ func parseQuantity(s string) (int, bool) {
 	return n, err == nil
 }
 
-// diffCargo rend ce qui est apparu et ce qui a disparu entre deux copies de soute.
+// diffCargo returns what appeared and what disappeared between two cargo copies.
 func diffCargo(before, after Cargo) (gained, lost Cargo) {
 	gained, lost = Cargo{}, Cargo{}
 	for name, qty := range after {

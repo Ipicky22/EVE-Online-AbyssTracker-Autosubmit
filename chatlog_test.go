@@ -15,13 +15,13 @@ func TestParseLocalLine(t *testing.T) {
 		want LocalEvent
 		ok   bool
 	}{
-		// Lignes réelles d'un client français : BOM en tête, espace insécable avant les deux-points, étoile après le nom.
+		// Real lines from a French client: leading BOM, non-breaking space before the colon, star after the name.
 		{"\ufeff[ 2026.11.11 12:56:51 ] Système EVE > Canal changé en Local\u00a0: Alillere*", LocalEvent{At: at, System: "Alillere"}, true},
 		{"\ufeff[ 2026.11.11 12:56:51 ] Système EVE > Canal changé en Local\u00a0: Inconnu", LocalEvent{At: at, System: "Inconnu", Abyss: true}, true},
-		// Client anglais.
+		// English client.
 		{"\ufeff[ 2026.11.11 12:56:51 ] EVE System > Channel changed to Local : Jita", LocalEvent{At: at, System: "Jita"}, true},
 		{"\ufeff[ 2026.11.11 12:56:51 ] EVE System > Channel changed to Local : Unknown", LocalEvent{At: at, System: "Unknown", Abyss: true}, true},
-		// Un joueur qui écrit la même phrase n'est pas le système.
+		// A player typing the same sentence is not the system.
 		{"\ufeff[ 2026.11.11 12:56:51 ] Some Pilot > Channel changed to Local : Unknown", LocalEvent{}, false},
 		{"          Channel Name:    Local", LocalEvent{}, false},
 		{"", LocalEvent{}, false},
@@ -34,7 +34,7 @@ func TestParseLocalLine(t *testing.T) {
 	}
 }
 
-// appendUTF16 écrit du texte comme le fait le client EVE : UTF-16LE, fins de ligne CRLF.
+// appendUTF16 writes text the way the EVE client does: UTF-16LE, CRLF line endings.
 func appendUTF16(t *testing.T, path, text string) {
 	t.Helper()
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
@@ -67,7 +67,7 @@ func TestLocalTail(t *testing.T) {
 	appendUTF16(t, old, header+"\ufeff[ 2026.11.10 09:00:05 ] EVE System > Channel changed to Local : Jita\r\n")
 	path := filepath.Join(dir, "Local_20261111_112829_90000001.txt")
 	appendUTF16(t, path, header+"\ufeff[ 2026.11.11 11:28:32 ] Système EVE > Canal changé en Local\u00a0: Alillere*\r\n")
-	// Un autre canal dans le même dossier ne doit pas être pris pour le Local.
+	// Another channel in the same folder must not be mistaken for Local.
 	appendUTF16(t, filepath.Join(dir, "Corp_20261111_120000_90000001.txt"), header)
 
 	events, fresh, char, err := tail.read()
@@ -78,7 +78,7 @@ func TestLocalTail(t *testing.T) {
 		t.Errorf("personnage = %+v", char)
 	}
 
-	// Rien de neuf, puis une ligne écrite en deux fois : elle ne compte qu'une fois complète.
+	// Nothing new, then a line written in two parts: it only counts once complete.
 	if events, fresh, _, _ = tail.read(); len(events) != 0 || fresh {
 		t.Fatalf("lecture sans nouveauté: events=%+v fresh=%v", events, fresh)
 	}
@@ -92,7 +92,7 @@ func TestLocalTail(t *testing.T) {
 		t.Fatalf("run lu: %+v", events)
 	}
 
-	// Nouvelle connexion à EVE : un fichier plus récent prend le relais.
+	// New EVE login: a more recent file takes over.
 	appendUTF16(t, filepath.Join(dir, "Local_20261111_200000_90000002.txt"), header+"\ufeff[ 2026.11.11 20:00:03 ] EVE System > Channel changed to Local : Amarr\r\n")
 	events, fresh, char, _ = tail.read()
 	if !fresh || len(events) != 1 || events[0].System != "Amarr" || char.ID != 90000002 {

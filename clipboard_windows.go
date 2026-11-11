@@ -27,10 +27,10 @@ var (
 
 const cfUnicodeText = 13
 
-// watchClipboard appelle onText à chaque nouveau texte copié, tant que wanted() est vrai.
-// Lecture passive du presse-papiers Windows : rien n'est envoyé au client EVE.
+// watchClipboard calls onText for each newly copied text, as long as wanted() is true.
+// Passive read of the Windows clipboard: nothing is sent to the EVE client.
 func watchClipboard(ctx context.Context, wanted func() bool, onText func(string)) {
-	last, _, _ := procSequence.Call() // ce qui a été copié avant le lancement ne nous regarde pas
+	last, _, _ := procSequence.Call() // whatever was copied before startup is none of our business
 	tick := time.NewTicker(500 * time.Millisecond)
 	defer tick.Stop()
 	for {
@@ -44,12 +44,12 @@ func watchClipboard(ctx context.Context, wanted func() bool, onText func(string)
 			continue
 		}
 		if !wanted() {
-			last = seq // hors session : on ne lit pas le contenu
+			last = seq // outside a session: the content is not read
 			continue
 		}
 		text, opened := readClipboard()
 		if !opened {
-			continue // presse-papiers tenu par une autre application : nouvel essai au prochain tick
+			continue // clipboard held by another application: retry on the next tick
 		}
 		last = seq
 		if text != "" {
@@ -59,7 +59,7 @@ func watchClipboard(ctx context.Context, wanted func() bool, onText func(string)
 }
 
 func readClipboard() (text string, opened bool) {
-	// OpenClipboard et CloseClipboard doivent venir du même thread.
+	// OpenClipboard and CloseClipboard must be called from the same thread.
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	if r, _, _ := procOpen.Call(0); r == 0 {
@@ -68,7 +68,7 @@ func readClipboard() (text string, opened bool) {
 	defer procClose.Call()
 	h, _, _ := procGetData.Call(cfUnicodeText)
 	if h == 0 {
-		return "", true // pas de texte (image, fichier...)
+		return "", true // no text (image, file...)
 	}
 	p, _, _ := procLock.Call(h)
 	if p == 0 {
@@ -79,7 +79,7 @@ func readClipboard() (text string, opened bool) {
 	if size < 2 {
 		return "", true
 	}
-	// Le bloc appartient au presse-papiers : on le copie avant de le rendre, sans dépasser sa taille.
+	// The block belongs to the clipboard: copy it before releasing it, without reading past its size.
 	u16 := make([]uint16, size/2)
 	procMove.Call(uintptr(unsafe.Pointer(&u16[0])), p, uintptr(len(u16)*2))
 	for i, c := range u16 {

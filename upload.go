@@ -15,18 +15,18 @@ const (
 	runURL  = "https://abysstracker.com/run/"
 )
 
-// Valeurs envoyées à Abyss Tracker. La spec publique ne les liste pas : elles viennent de l'ancien code
-// du site (molbal/abyss-tracker, CreateRunHelper.php) et d'un run de test accepté par le serveur.
+// Values sent to Abyss Tracker. The public spec does not list them: they come from the site's former code
+// (molbal/abyss-tracker, CreateRunHelper.php) and from a test run accepted by the server.
 var (
-	hullValues    = []string{"Frigate", "Destroyer", "Cruiser"}                    // noms du champ HullType des runs
-	weatherValues = []string{"Electrical", "Dark", "Exotic", "Firestorm", "Gamma"} // confirmées par les runs publics
+	hullValues    = []string{"Frigate", "Destroyer", "Cruiser"}                    // names of the runs' HullType field
+	weatherValues = []string{"Electrical", "Dark", "Exotic", "Firestorm", "Gamma"} // confirmed by public runs
 )
 
-// Les runs partent toujours en public, avec le nom du personnage.
-// Toute autre valeur publie le run en anonyme (confirmé par l'équipe d'EVE Workbench).
+// Runs are always sent as public, with the character's name.
+// Any other value publishes the run anonymously (confirmed by the EVE Workbench team).
 const privacy = "PUBLIC"
 
-// Fit est un fit du compte Abyss Tracker.
+// Fit is a fit of the Abyss Tracker account.
 type Fit struct {
 	ID   string
 	Name string
@@ -67,7 +67,7 @@ type telemetryShip struct {
 	ShipTypeID    int    `json:"shipTypeId,omitempty"`
 }
 
-// telemetry suit TelemetryRequestDto ; le serveur refuse tout champ inconnu.
+// telemetry follows TelemetryRequestDto; the server rejects any unknown field.
 type telemetry struct {
 	RecordUUID         string          `json:"recordUuid"`
 	Privacy            string          `json:"privacy"`
@@ -98,9 +98,9 @@ func buildTelemetry(run *Run, s Session, ch Character, items map[string]Item) te
 		CharacterID:        ch.ID,
 		CharacterName:      ch.Name,
 		Success:            run.Success,
-		// shortcut: les conteneurs ne sont pas observables sans lire l'écran. L'ancien code du site classe
-		// le run « tous les conteneurs pillés » quand les deux nombres sont égaux : 1/0 évite cette fausse
-		// déclaration. À remplacer par un choix de session si le classement obtenu ne convient pas.
+		// shortcut: cans cannot be observed without reading the screen. The site's former code classifies
+		// the run as "all cans looted" when both numbers are equal: 1/0 avoids that false
+		// statement. Replace with a session setting if the resulting classification is not suitable.
 		CansSpawned: 1,
 		CansLooted:  0,
 		LootGained:  toLoot(run.Gained, items),
@@ -114,7 +114,7 @@ func buildTelemetry(run *Run, s Session, ch Character, items map[string]Item) te
 }
 
 func toLoot(c Cargo, items map[string]Item) []lootItem {
-	loot := make([]lootItem, 0, len(c)) // jamais null : le champ est obligatoire
+	loot := make([]lootItem, 0, len(c)) // never null: the field is required
 	for name, qty := range c {
 		loot = append(loot, lootItem{Name: items[name].Name, Count: qty, TypeID: items[name].TypeID})
 	}
@@ -122,7 +122,7 @@ func toLoot(c Cargo, items map[string]Item) []lootItem {
 	return loot
 }
 
-// errRejected : le serveur a refusé le run ; le renvoyer tel quel ne servirait à rien.
+// errRejected: the server rejected the run; resending it unchanged would be pointless.
 var errRejected = errors.New("run refusé par Abyss Tracker")
 
 func sendTelemetry(apiKey string, body []byte) (runID string, err error) {
@@ -139,7 +139,7 @@ func sendTelemetry(apiKey string, body []byte) (runID string, err error) {
 		if errors.As(err, &he) && he.Status >= 400 && he.Status < 500 && he.Status != 429 {
 			return "", fmt.Errorf("%w: %v", errRejected, err)
 		}
-		return "", err // réseau ou 5xx : on réessaiera
+		return "", err // network or 5xx: will be retried
 	}
 	if res.Error {
 		return "", fmt.Errorf("%w: %s", errRejected, res.Message)
@@ -155,7 +155,7 @@ func newUUID() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
 
-// marshal écrit un JSON lisible : les fichiers pending/ et incomplete/ sont aussi lus par un humain.
+// marshal writes readable JSON: the pending/ and incomplete/ files are also read by a human.
 func marshal(v any) []byte {
 	b, _ := json.MarshalIndent(v, "", "  ")
 	return b

@@ -13,31 +13,31 @@ import (
 	"unicode/utf16"
 )
 
-// Le client EVE écrit sur disque le journal du canal Local, une ligne à chaque changement de système :
+// The EVE client writes the Local channel log to disk, one line per system change:
 //
 //	[ 2026.11.11 12:56:51 ] Système EVE > Canal changé en Local : Inconnu
 //	[ 2026.11.11 13:07:57 ] EVE System > Channel changed to Local : Jita
 //
-// On le lit comme n'importe quel fichier : rien n'est demandé au client.
+// It is read like any other file: nothing is asked of the client.
 
-// LocalEvent est un changement de système lu dans le journal Local.
+// LocalEvent is a system change read from the Local log.
 type LocalEvent struct {
-	At     time.Time // heure EVE (UTC), à la seconde
+	At     time.Time // EVE time (UTC), to the second
 	System string
 	Abyss  bool
 }
 
 var (
-	// Le client français met une espace insécable avant les deux-points et une étoile après le nom.
+	// The French client puts a non-breaking space before the colon and a star after the name.
 	localLine = regexp.MustCompile(`^\x{feff}?\[ (\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}) \] (?:EVE System|Système EVE) > .*Local[\s\x{a0}]*:[\s\x{a0}]*(.+?)\*?\s*$`)
 	listener  = regexp.MustCompile(`(?m)^\s*Listener:\s+(.+?)\s*$`)
-	// Local_AAAAMMJJ_HHMMSS_<identifiant du personnage>.txt
+	// Local_YYYYMMDD_HHMMSS_<character ID>.txt
 	localFile = regexp.MustCompile(`^Local_\d{8}_\d{6}_(\d+)\.txt$`)
 )
 
-// L'Abysse n'a pas de nom de système dans le Local.
-// shortcut: « Inconnu » vérifié sur un journal français ; « Unknown » supposé pour le client anglais,
-// à confirmer avec un vrai journal anglais.
+// The Abyss has no system name in Local.
+// shortcut: "Inconnu" checked against a French log; "Unknown" assumed for the English client,
+// to be confirmed with a real English log.
 var abyssNames = []string{"Inconnu", "Unknown"}
 
 func parseLocalLine(line string) (LocalEvent, bool) {
@@ -56,12 +56,12 @@ func parseLocalLine(line string) (LocalEvent, bool) {
 	return e, true
 }
 
-// defaultChatlogDir rend le dossier où EVE range ses journaux de discussion.
+// defaultChatlogDir returns the folder where EVE stores its chat logs.
 func defaultChatlogDir() string {
 	home, _ := os.UserHomeDir()
 	candidates := []string{
 		filepath.Join(home, "Documents", "EVE", "logs", "Chatlogs"),
-		filepath.Join(home, "OneDrive", "Documents", "EVE", "logs", "Chatlogs"), // Documents redirigé par OneDrive
+		filepath.Join(home, "OneDrive", "Documents", "EVE", "logs", "Chatlogs"), // Documents redirected by OneDrive
 	}
 	for _, c := range candidates {
 		if st, err := os.Stat(c); err == nil && st.IsDir() {
@@ -71,18 +71,18 @@ func defaultChatlogDir() string {
 	return candidates[0]
 }
 
-// localTail suit le journal Local le plus récent d'un dossier.
+// localTail follows the most recent Local log of a folder.
 type localTail struct {
 	dir    string
 	path   string
 	offset int64
-	rest   []byte // fin de fichier pas encore terminée par un retour à la ligne
-	fresh  bool   // fichier ouvert dont l'en-tête n'a pas encore été rendu
+	rest   []byte // end of file not yet terminated by a newline
+	fresh  bool   // opened file whose header has not been returned yet
 }
 
-// read rend les changements de système apparus depuis le dernier appel.
-// fresh vaut vrai quand un nouveau fichier vient d'être ouvert (connexion à EVE) :
-// les événements sont alors de l'historique, et char identifie le personnage.
+// read returns the system changes that appeared since the last call.
+// fresh is true when a new file has just been opened (EVE login):
+// the events are then history, and char identifies the character.
 func (t *localTail) read() (events []LocalEvent, fresh bool, char Character, err error) {
 	entries, err := os.ReadDir(t.dir)
 	if err != nil {
@@ -97,8 +97,8 @@ func (t *localTail) read() (events []LocalEvent, fresh bool, char Character, err
 	if len(names) == 0 {
 		return nil, false, char, fmt.Errorf("aucun journal Local dans %s : lance EVE", t.dir)
 	}
-	// shortcut: le nom commence par la date, donc le dernier par ordre alphabétique est le plus récent.
-	// Un seul personnage à la fois ; avec plusieurs clients ouverts il faudra choisir par personnage.
+	// shortcut: the name starts with the date, so the last one alphabetically is the most recent.
+	// One character at a time; with several clients open, the file will have to be chosen per character.
 	sort.Strings(names)
 	newest := filepath.Join(t.dir, names[len(names)-1])
 	if newest != t.path {
@@ -116,11 +116,11 @@ func (t *localTail) read() (events []LocalEvent, fresh bool, char Character, err
 		t.rest = append(t.rest, buf[:n]...)
 		t.offset += int64(n)
 		if rerr != nil {
-			break // fin de fichier atteinte
+			break // end of file reached
 		}
 	}
 
-	// Le fichier est en UTF-16LE : on ne décode que les lignes complètes.
+	// The file is UTF-16LE: only complete lines are decoded.
 	end := bytes.LastIndex(t.rest, []byte{'\n', 0})
 	for end >= 0 && end%2 != 0 {
 		end = bytes.LastIndex(t.rest[:end], []byte{'\n', 0})

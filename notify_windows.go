@@ -10,8 +10,8 @@ import (
 	"syscall"
 )
 
-// Notification Windows via PowerShell, pour ne dépendre d'aucune bibliothèque.
-// Le contenu passe par une variable d'environnement : aucun texte n'est interpolé dans le script.
+// Windows notification through PowerShell, to avoid any library dependency.
+// The content goes through an environment variable: no text is interpolated into the script.
 const toastScript = `
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
 [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
@@ -21,7 +21,7 @@ $app = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell
 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show([Windows.UI.Notifications.ToastNotification]::new($xml))
 `
 
-// notify affiche une notification ; un clic ouvre link s'il est fourni.
+// notify shows a notification; clicking it opens link when one is given.
 func notify(msg, link string) {
 	toast := `<toast>`
 	if link != "" {

@@ -4,7 +4,7 @@ package main
 
 import "context"
 
-// Hors Windows, abyssup ne sert qu'à développer et tester : pas de presse-papiers ni de notification.
+// Outside Windows, abyssup is only used for development and tests: no clipboard, no notification.
 
 func watchClipboard(ctx context.Context, wanted func() bool, onText func(string)) {}
 

@@ -23,10 +23,10 @@ import (
 const (
 	listenAddr = "127.0.0.1:47813"
 	pageURL    = "http://localhost:47813"
-	tailEvery  = time.Second // relecture du journal Local
+	tailEvery  = time.Second // how often the Local log is read again
 )
 
-// Session regroupe ce que l'utilisateur choisit une fois et qui vaut pour tous les runs suivants.
+// Session holds what the user picks once and that applies to every following run.
 type Session struct {
 	Weather    string
 	Tier       int
@@ -39,17 +39,17 @@ type Session struct {
 
 type Config struct {
 	APIKey     string
-	ChatlogDir string // vide = dossier par défaut d'EVE
+	ChatlogDir string // empty = EVE's default folder
 	Session    Session
 }
 
-// Character identifie le personnage, lu dans le journal Local.
+// Character identifies the character, read from the Local log.
 type Character struct {
 	ID   int
 	Name string
 }
 
-// job est un résultat du tracker figé avec la session et le personnage du moment.
+// job is a tracker outcome frozen with the session and character at that moment.
 type job struct {
 	Outcome
 	Session   Session
@@ -60,14 +60,14 @@ type App struct {
 	dir     string
 	dryRun  bool
 	jobs    chan job
-	flushMu sync.Mutex // un seul envoi de la file à la fois
+	flushMu sync.Mutex // only one queue flush at a time
 
 	mu      sync.Mutex
 	cfg     Config
-	char    Character       // personnage du journal Local en cours
-	names   map[string]Item // cache nom affiché -> type EVE
+	char    Character       // character of the current Local log
+	names   map[string]Item // cache: displayed name -> EVE type
 	fits    []Fit
-	tracker *Tracker // nil hors session
+	tracker *Tracker // nil outside a session
 	stop    context.CancelFunc
 	status  string
 }
@@ -90,14 +90,14 @@ func main() {
 
 	ln, err := net.Listen("tcp", listenAddr)
 	if err != nil {
-		// Port pris : abyssup tourne déjà, on montre simplement sa page.
+		// Port taken: abyssup is already running, just show its page.
 		if !*noOpen {
 			openBrowser(pageURL)
 		}
 		return
 	}
 
-	// Sans console sous Windows (-H=windowsgui) : le journal est la seule trace.
+	// No console on Windows (-H=windowsgui): the log file is the only trace.
 	if f, err := os.OpenFile(filepath.Join(a.dir, "abyssup.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600); err == nil {
 		log.SetOutput(io.MultiWriter(os.Stderr, f))
 	}
@@ -122,8 +122,8 @@ func (a *App) load(name string, v any) bool {
 }
 
 func (a *App) save(name string, v any) {
-	// 0600 : config.json contient le jeton Abyss Tracker.
-	// shortcut: stockés en clair dans le profil utilisateur (comme gh ou aws) ; passer à DPAPI si le PC est partagé.
+	// 0600: config.json holds the Abyss Tracker token.
+	// shortcut: stored in plain text in the user profile (like gh or aws); switch to DPAPI if the PC is shared.
 	if err := os.WriteFile(filepath.Join(a.dir, name), marshal(v), 0o600); err != nil {
 		log.Printf("écriture %s: %v", name, err)
 	}
@@ -142,7 +142,7 @@ func (a *App) setStatus(msg string) {
 	log.Print(msg)
 }
 
-// startSession lance (ou met à jour) la session. Appelé par la page.
+// startSession starts (or updates) the session. Called by the page.
 func (a *App) startSession(s Session) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -172,8 +172,8 @@ func (a *App) stopSession() {
 	})
 }
 
-// feed applique une entrée au tracker de la session en cours, fige session et personnage
-// sur chaque résultat, puis passe la main au worker une fois le verrou rendu.
+// feed applies an input to the current session's tracker, freezes session and character
+// on each outcome, then hands over to the worker once the lock is released.
 func (a *App) feed(f func(*Tracker) []Outcome) {
 	a.mu.Lock()
 	var jobs []job
@@ -194,10 +194,10 @@ func (a *App) onClipboard(text string) {
 		now := time.Now()
 		a.feed(func(t *Tracker) []Outcome { return t.OnCargo(cargo, now) })
 	}
-	// Tout autre texte est oublié ici : ni journal, ni disque.
+	// Any other text is dropped here: neither logged nor written to disk.
 }
 
-// chatlogDir rend le dossier des journaux de discussion d'EVE. Verrou tenu par l'appelant.
+// chatlogDir returns EVE's chat log folder. Lock held by the caller.
 func (a *App) chatlogDir() string {
 	if a.cfg.ChatlogDir != "" {
 		return a.cfg.ChatlogDir
@@ -205,14 +205,14 @@ func (a *App) chatlogDir() string {
 	return defaultChatlogDir()
 }
 
-// tail suit le journal Local tant que la session dure.
+// tail follows the Local log for as long as the session lasts.
 func (a *App) tail(ctx context.Context, dir string) {
 	t := &localTail{dir: dir}
 	lastErr := ""
 	for {
 		events, fresh, char, err := t.read()
 		if err != nil {
-			if err.Error() != lastErr { // la même erreur revient chaque seconde : on ne la dit qu'une fois
+			if err.Error() != lastErr { // the same error comes back every second: report it only once
 				lastErr = err.Error()
 				a.setStatus("Journal Local illisible : " + lastErr)
 			}
@@ -226,7 +226,7 @@ func (a *App) tail(ctx context.Context, dir string) {
 					}
 					return out
 				}
-				// Nouveau fichier : ses lignes sont de l'historique, seule la dernière position compte.
+				// New file: its lines are history, only the last location matters.
 				a.char = char
 				if len(events) > 0 {
 					tr.SetLocation(events[len(events)-1])
@@ -242,7 +242,7 @@ func (a *App) tail(ctx context.Context, dir string) {
 	}
 }
 
-// work traite les résultats un par un, dans l'ordre, hors du verrou (réseau).
+// work handles outcomes one by one, in order, outside the lock (network).
 func (a *App) work() {
 	for j := range a.jobs {
 		switch j.Kind {
@@ -280,7 +280,7 @@ func (a *App) complete(j job) {
 	a.flushPending()
 }
 
-// resolve rend le type EVE de chaque objet gagné ou perdu, en s'appuyant sur le cache disque.
+// resolve returns the EVE type of each gained or lost item, relying on the disk cache.
 func (a *App) resolve(run *Run) (map[string]Item, error) {
 	items := map[string]Item{}
 	var unknown []string
@@ -300,7 +300,7 @@ func (a *App) resolve(run *Run) (map[string]Item, error) {
 	}
 	var found map[string]Item
 	var err error
-	// shortcut: 3 essais en ligne plutôt qu'une file de reprise.
+	// shortcut: 3 inline attempts rather than a retry queue.
 	for range 3 {
 		if found, err = resolveNames(unknown); err == nil {
 			break
@@ -329,7 +329,7 @@ func (a *App) resolve(run *Run) (map[string]Item, error) {
 	return items, nil
 }
 
-// flushPending envoie les runs en attente, du plus ancien au plus récent.
+// flushPending sends the pending runs, oldest first.
 func (a *App) flushPending() {
 	a.flushMu.Lock()
 	defer a.flushMu.Unlock()
@@ -363,7 +363,7 @@ func (a *App) flushPending() {
 			notify(err.Error(), "")
 		default:
 			a.setStatus(fmt.Sprintf("Envoi impossible, le run reste en attente : %v", err))
-			return // panne passagère : on garde l'ordre et on réessaiera au prochain run
+			return // transient failure: keep the order and retry at the next run
 		}
 	}
 }

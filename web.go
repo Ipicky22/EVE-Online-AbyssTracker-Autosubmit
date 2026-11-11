@@ -38,7 +38,7 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("POST /settings", a.handleSettings)
 	mux.HandleFunc("POST /session/start", a.handleStart)
 	mux.HandleFunc("POST /session/stop", a.handleStop)
-	// Un autre site ouvert dans le navigateur ne doit ni poster ici (CSRF) ni lire la page (DNS rebinding).
+	// Another site open in the browser must neither post here (CSRF) nor read the page (DNS rebinding).
 	protected := http.NewCrossOriginProtection().Handler(mux)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Host != "localhost:47813" && r.Host != listenAddr {
@@ -85,11 +85,11 @@ func (a *App) handlePage(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 	a.mu.Lock()
-	// Le jeton n'est jamais réaffiché : un champ laissé vide garde la valeur enregistrée.
+	// The token is never shown again: an empty field keeps the saved value.
 	if key := strings.TrimSpace(r.FormValue("api_key")); key != "" {
 		a.cfg.APIKey = key
 	}
-	// Le dossier par défaut n'est pas figé dans la config : il reste détecté à chaque lancement.
+	// The default folder is not frozen in the config: it is detected again at each start.
 	if dir := strings.TrimSpace(r.FormValue("chatlog_dir")); dir == defaultChatlogDir() {
 		a.cfg.ChatlogDir = ""
 	} else {

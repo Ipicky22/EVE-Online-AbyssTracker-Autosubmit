@@ -2,7 +2,7 @@ package main
 
 import "time"
 
-// Run est un run détecté, avant ajout des paramètres de session.
+// Run is a detected run, before the session settings are added.
 type Run struct {
 	Start    time.Time
 	Duration time.Duration
@@ -14,9 +14,9 @@ type Run struct {
 type OutcomeKind int
 
 const (
-	Notify     OutcomeKind = iota // message seul
-	Complete                      // run à envoyer
-	Incomplete                    // run sans butin fiable : gardé en local, jamais envoyé
+	Notify     OutcomeKind = iota // message only
+	Complete                      // run to send
+	Incomplete                    // run without reliable loot: kept locally, never sent
 )
 
 type Outcome struct {
@@ -33,25 +33,25 @@ const (
 	awaitingLoot
 )
 
-// Tracker transforme changements de système et copies de soute en runs.
-// Aucune entrée/sortie ici : tout passe par les valeurs de retour.
+// Tracker turns system changes and cargo copies into runs.
+// No I/O here: everything goes through return values.
 type Tracker struct {
 	state  trackerState
-	base   Cargo  // soute avant le prochain run ; nil = inconnue
-	system string // dernier système connu hors Abysse
-	entry  string // système d'où le run en cours a été lancé
-	ignore bool   // run déjà en cours au démarrage de la session : ni début ni soute connus
+	base   Cargo  // cargo before the next run; nil = unknown
+	system string // last known system outside the Abyss
+	entry  string // system the current run was started from
+	ignore bool   // run already in progress when the session started: neither start nor cargo known
 	run    Run
-	late   Cargo // dernière copie faite alors que le run semblait encore en cours
+	late   Cargo // last copy made while the run still looked in progress
 	lateAt time.Time
 }
 
-// lateGrace couvre le délai entre la sortie réelle et sa lecture dans le journal.
-// Il se mesure sur l'horloge du PC (heure de la copie, heure de lecture de la ligne) :
-// l'heure EVE écrite dans le journal peut être décalée de celle du PC.
+// lateGrace covers the delay between the real exit and its line being read from the log.
+// It is measured on the PC clock (time of the copy, time the line was read):
+// the EVE time written in the log may be offset from the PC clock.
 const lateGrace = 15 * time.Second
 
-// SetLocation donne la position lue dans l'historique du journal, avant tout nouvel événement.
+// SetLocation gives the location read from the log history, before any new event.
 func (t *Tracker) SetLocation(e LocalEvent) {
 	if e.Abyss {
 		t.state, t.ignore = inAbyss, true
@@ -60,7 +60,7 @@ func (t *Tracker) SetLocation(e LocalEvent) {
 	t.system = e.System
 }
 
-// OnLocal traite un changement de système ; seen est l'heure du PC à laquelle la ligne a été lue.
+// OnLocal handles a system change; seen is the PC time at which the line was read.
 func (t *Tracker) OnLocal(e LocalEvent, seen time.Time) []Outcome {
 	switch {
 	case e.Abyss:
@@ -95,8 +95,8 @@ func (t *Tracker) exit(e LocalEvent, seen time.Time) []Outcome {
 		return []Outcome{{Kind: Notify, Msg: "Run déjà en cours au démarrage de la session : ignoré. Copie ta soute pour le prochain."}}
 	}
 	t.run.Duration = e.At.Sub(t.run.Start)
-	// Mort dans l'Abysse : la capsule est détruite aussi, le personnage se réveille dans son clone.
-	// shortcut: indétectable si le clone est dans le système d'où le filament a été lancé.
+	// Death in the Abyss: the capsule is destroyed too, the character wakes up in their clone.
+	// shortcut: undetectable when the clone is in the system the filament was used in.
 	if entry != "" && e.System != entry {
 		t.state, t.base = idle, nil
 		run := t.run
@@ -110,7 +110,7 @@ func (t *Tracker) exit(e LocalEvent, seen time.Time) []Outcome {
 	}
 	t.state = awaitingLoot
 	t.run.Success = true
-	// Une copie faite juste avant que la sortie ne soit lue dans le journal est celle d'après-run.
+	// A copy made just before the exit is read from the log is the after-run copy.
 	if late := t.late; late != nil && seen.Sub(t.lateAt) <= lateGrace {
 		if out := t.OnCargo(late, t.lateAt); out != nil {
 			return out
@@ -119,8 +119,8 @@ func (t *Tracker) exit(e LocalEvent, seen time.Time) []Outcome {
 	return []Outcome{{Kind: Notify, Msg: "Run terminé. Copie ta soute (Ctrl+A, Ctrl+C)."}}
 }
 
-// moved : le personnage a changé de système hors run. Le journal ne dit pas s'il s'est amarré en route,
-// donc la soute connue n'est plus fiable.
+// moved: the character changed system outside a run. The log does not say whether they docked on the way,
+// so the known cargo is no longer reliable.
 func (t *Tracker) moved() []Outcome {
 	out := t.dropAwaiting("changement de système avant la copie de soute")
 	if t.base != nil {
@@ -130,7 +130,7 @@ func (t *Tracker) moved() []Outcome {
 	return out
 }
 
-// dropAwaiting abandonne le run en attente de butin : la soute a pu changer, le diff ne serait plus fiable.
+// dropAwaiting gives up the run waiting for its loot: the cargo may have changed, the diff would be unreliable.
 func (t *Tracker) dropAwaiting(reason string) []Outcome {
 	if t.state != awaitingLoot {
 		return nil
@@ -150,7 +150,7 @@ func (t *Tracker) OnCargo(c Cargo, at time.Time) []Outcome {
 	case awaitingLoot:
 		gained, lost := diffCargo(t.base, c)
 		if len(gained) == 0 && len(lost) == 0 {
-			return nil // même copie qu'avant le run : le filament consommé manquerait forcément
+			return nil // same copy as before the run: the consumed filament would necessarily be missing
 		}
 		run := t.run
 		run.Gained, run.Lost = gained, lost
@@ -160,7 +160,7 @@ func (t *Tracker) OnCargo(c Cargo, at time.Time) []Outcome {
 	return nil
 }
 
-// Stop clôt la session : un run encore en attente de butin ne sera jamais complété.
+// Stop ends the session: a run still waiting for its loot will never be completed.
 func (t *Tracker) Stop() []Outcome {
 	return t.dropAwaiting("session terminée avant la copie de soute")
 }
