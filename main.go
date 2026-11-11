@@ -285,7 +285,10 @@ func (a *App) lang() string {
 }
 
 func (a *App) complete(j job) {
-	items, missing, err := a.resolve(j.Run)
+	// The session's filament is resolved too: fixFilament needs its type even when the cargo diff hides it.
+	fil := filamentName(j.Session)
+	items, missing, err := a.resolve(j.Run, fil)
+	missing = slices.DeleteFunc(missing, func(name string) bool { return name == fil })
 	switch {
 	case err != nil:
 		j.Msg, j.Args = "notSentError", []any{err}
@@ -308,17 +311,22 @@ func (a *App) complete(j job) {
 
 // resolve returns the EVE type of each gained or lost item, relying on the disk cache.
 // missing lists the names EVE does not know.
-func (a *App) resolve(run *Run) (items map[string]Item, missing []string, err error) {
+func (a *App) resolve(run *Run, extra ...string) (items map[string]Item, missing []string, err error) {
 	items = map[string]Item{}
 	var unknown []string
 	a.mu.Lock()
+	names := slices.Clone(extra)
 	for _, c := range []Cargo{run.Gained, run.Lost} {
 		for name := range c {
-			if it, ok := a.names[name]; ok {
-				items[name] = it
-			} else {
-				unknown = append(unknown, name)
-			}
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names)
+	for _, name := range slices.Compact(names) {
+		if it, ok := a.names[name]; ok {
+			items[name] = it
+		} else {
+			unknown = append(unknown, name)
 		}
 	}
 	a.mu.Unlock()

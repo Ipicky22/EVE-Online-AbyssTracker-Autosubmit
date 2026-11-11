@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
+	"strings"
 )
 
 const (
@@ -104,13 +106,64 @@ func buildTelemetry(run *Run, s Session, ch Character, items map[string]Item) te
 		CansSpawned: 1,
 		CansLooted:  0,
 		LootGained:  toLoot(run.Gained, items),
-		LootLost:    toLoot(run.Lost, items),
+		// The consumed filaments are part of the lost items, with their real count (3 for frigates):
+		// Abyss Tracker only adds the filament itself when it is missing (confirmed by the EVE Workbench team).
+		LootLost: toLoot(run.Lost, items),
+	}
+	if fil := items[filamentName(s)]; run.Success && fil.TypeID != 0 {
+		t.LootGained, t.LootLost = fixFilament(t.LootGained, t.LootLost, fil, filamentsUsed[s.Hull])
 	}
 	if s.FitID != "" {
 		t.Ships = []telemetryShip{{ForeignID: s.FitID, CharacterName: ch.Name,
 			FittingName: s.FitName, ShipName: s.ShipName, ShipTypeID: s.ShipTypeID}}
 	}
 	return t
+}
+
+// filamentsUsed is how many filaments one run consumes, per hull.
+var filamentsUsed = map[string]int{"Frigate": 3, "Destroyer": 2, "Cruiser": 1}
+
+// filamentName is the English name of the filament a session's runs consume.
+func filamentName(s Session) string {
+	return tierNames[s.Tier] + " " + s.Weather + " Filament"
+}
+
+// isFilament tells whether an English item name is an abyssal filament.
+func isFilament(name string) bool {
+	tier, rest, ok := strings.Cut(strings.TrimSuffix(name, " Filament"), " ")
+	return ok && strings.HasSuffix(name, " Filament") && slices.Contains(tierNames, tier) && slices.Contains(weatherValues, rest)
+}
+
+// fixFilament restores the detail a cargo diff hides when filaments identical to the consumed ones were
+// looted during the run: the diff only shows the net change. Three used and one looted reads as two lost;
+// the truth is three lost and one gained. The loot value is the same, the detail is not.
+// It leaves the loot untouched when the cargo contradicts the session settings (another filament was
+// consumed, or more filaments disappeared than one run uses): guessing would invent data.
+func fixFilament(gained, lost []lootItem, filament Item, used int) (g, l []lootItem) {
+	qty := func(loot []lootItem) int {
+		for _, it := range loot {
+			if it.TypeID == filament.TypeID {
+				return it.Count
+			}
+		}
+		return 0
+	}
+	for _, it := range lost {
+		if isFilament(it.Name) && it.TypeID != filament.TypeID {
+			return gained, lost
+		}
+	}
+	looted := used - qty(lost) + qty(gained)
+	if used == 0 || looted <= 0 {
+		return gained, lost
+	}
+	set := func(loot []lootItem, count int) []lootItem {
+		loot = slices.DeleteFunc(slices.Clone(loot), func(it lootItem) bool { return it.TypeID == filament.TypeID })
+		loot = append(loot, lootItem{Name: filament.Name, Count: count, TypeID: filament.TypeID})
+		sort.Slice(loot, func(i, j int) bool { return loot[i].Name < loot[j].Name })
+		return loot
+	}
+	return set(gained, looted), set(lost, used)
 }
 
 func toLoot(c Cargo, items map[string]Item) []lootItem {
