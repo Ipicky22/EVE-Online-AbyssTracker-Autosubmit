@@ -59,6 +59,7 @@ var messagesDE = map[string]string{
 	"endSession":    "Sitzung beenden",
 	"settings":      "Einstellungen",
 	"newVersion":    "Neue Version verfügbar",
+	"noToken":       "Kein Abyss-Tracker-Token eingetragen: Deine Runs können nicht gesendet werden.",
 	"backToSession": "Zurück zur Sitzung",
 	"settingsIntro": "Nur einmal nötig. Weder eine EVE-Entwickleranwendung noch eine Charakteranmeldung ist erforderlich.",
 	"firstUse":      "Erste Verwendung: Füge dein Abyss-Tracker-Token ein, um deine Fittings aufzulisten und deine Runs zu senden.",

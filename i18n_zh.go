@@ -59,6 +59,7 @@ var messagesZH = map[string]string{
 	"endSession":    "结束会话",
 	"settings":      "设置",
 	"newVersion":    "有新版本可用",
+	"noToken":       "尚未填写 Abyss Tracker 令牌：无法发送记录。",
 	"backToSession": "返回会话",
 	"settingsIntro": "只需设置一次。不需要 EVE 开发者应用，也不需要角色登录。",
 	"firstUse":      "首次使用：粘贴你的 Abyss Tracker 令牌，以列出装配并发送记录。",

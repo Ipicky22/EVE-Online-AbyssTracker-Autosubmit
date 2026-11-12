@@ -58,6 +58,7 @@ var messagesFR = map[string]string{
 	"endSession":    "Terminer la session",
 	"settings":      "Réglages",
 	"newVersion":    "Nouvelle version disponible",
+	"noToken":       "Aucun jeton Abyss Tracker renseigné : tes runs ne peuvent pas être envoyés.",
 	"backToSession": "Retour à la session",
 	"settingsIntro": "À faire une seule fois. Aucune application développeur EVE ni connexion du personnage n'est nécessaire.",
 	"firstUse":      "Première utilisation : colle ton jeton Abyss Tracker pour lister tes fits et envoyer tes runs.",

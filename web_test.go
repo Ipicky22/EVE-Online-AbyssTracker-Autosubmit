@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -65,6 +66,23 @@ func TestPagesRender(t *testing.T) {
 			!strings.Contains(page, "/data/dir") || !strings.Contains(page, `value="`+lang+`" checked`) ||
 			!strings.Contains(page, `class="saved"`) || !strings.Contains(page, `class="banner"`) {
 			t.Errorf("%s: settings page incomplete:\n%s", lang, page)
+		}
+	}
+}
+
+// Without a token nothing can be sent: the session page must say so, and stop saying so once a token is set.
+func TestSessionPageWarnsWithoutToken(t *testing.T) {
+	srv := httptest.NewServer(http.NotFoundHandler()) // stands for Abyss Tracker when the fits are listed
+	old := ewbBase
+	ewbBase = srv.URL
+	t.Cleanup(func() { srv.Close(); ewbBase = old })
+	for key, want := range map[string]bool{"": true, "token": false} {
+		rec := httptest.NewRecorder()
+		a := &App{cfg: Config{Lang: "en", APIKey: key}}
+		a.handlePage(rec, httptest.NewRequest("GET", "/", nil))
+		page := rec.Body.String()
+		if got := strings.Contains(page, `class="banner warn"`) && strings.Contains(page, "No Abyss Tracker token set"); got != want {
+			t.Errorf("token %q: warning shown = %v, want %v", key, got, want)
 		}
 	}
 }

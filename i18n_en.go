@@ -58,6 +58,7 @@ var messagesEN = map[string]string{
 	"endSession":    "End session",
 	"settings":      "Settings",
 	"newVersion":    "New version available",
+	"noToken":       "No Abyss Tracker token set: your runs cannot be sent.",
 	"backToSession": "Back to the session",
 	"settingsIntro": "To do once. No EVE developer application and no character login are needed.",
 	"firstUse":      "First use: paste your Abyss Tracker token to list your fits and send your runs.",
