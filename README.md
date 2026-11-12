@@ -3,14 +3,14 @@
 **English** | [Français](README.fr.md) | [Deutsch](README.de.md) | [Русский](README.ru.md) | [中文](README.zh.md)
 
 Submits your EVE Online Abyssal Deadspace runs to [Abyss Tracker](https://abysstracker.com) automatically.
-The program is called `abyssup`.
+The program is called `abysstracker-autosubmit`.
 It never touches the EVE client: it only reads the Local chat log that EVE writes to disk, and the Windows clipboard.
 
 > **Status: work in progress.** Uploading works. Reading the Windows clipboard has not been tested on a real machine yet, see [Verification status](#verification-status).
 
 ## Usage
 
-1. Run `abyssup.exe`: the page `http://localhost:47813` opens.
+1. Run `abysstracker-autosubmit.exe`: the page `http://localhost:47813` opens.
 2. Pick the weather, tier, hull and fit, then click **Start session**.
 3. Copy your cargo hold (`Ctrl+A`, `Ctrl+C`) before the first run.
 4. After each run, copy your cargo hold again: the run is sent to Abyss Tracker.
@@ -49,8 +49,8 @@ Item names are always sent to Abyss Tracker in English.
 
 ## Data
 
-In `%APPDATA%\abyssup\` (`~/.config/abyssup/` on Linux):
-`config.json`, `names.json` (item name cache), `abyssup.log`,
+In `%APPDATA%\abysstracker-autosubmit\` (`~/.config/abysstracker-autosubmit/` on Linux):
+`config.json`, `names.json` (item name cache), `abysstracker-autosubmit.log`,
 and the folders `pending/`, `sent/`, `incomplete/`, `rejected/`.
 
 The token is stored in plain text in your user profile, never in this repository.
@@ -74,7 +74,7 @@ The token is stored in plain text in your user profile, never in this repository
 
 ```
 go test ./...
-GOOS=windows go build -ldflags "-H=windowsgui" -o abyssup.exe .
+GOOS=windows go build -ldflags "-H=windowsgui" -o abysstracker-autosubmit.exe .
 ```
 
 ## Verification status

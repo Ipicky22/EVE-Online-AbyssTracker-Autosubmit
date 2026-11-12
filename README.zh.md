@@ -5,14 +5,14 @@
 > 本译文未经中文母语者校对，以[英文版](README.md)为准。
 
 自动把你在 EVE Online 中的深渊（Abyssal Deadspace）记录提交到 [Abyss Tracker](https://abysstracker.com)。
-程序名为 `abyssup`。
+程序名为 `abysstracker-autosubmit`。
 它从不操作 EVE 客户端：只读取 EVE 写入硬盘的本地频道聊天日志，以及 Windows 剪贴板。
 
 > **状态：开发中。** 上传功能已可用。Windows 剪贴板读取尚未在真实电脑上测试，见[验证状态](#验证状态)。
 
 ## 使用方法
 
-1. 运行 `abyssup.exe`：页面 `http://localhost:47813` 会自动打开。
+1. 运行 `abysstracker-autosubmit.exe`：页面 `http://localhost:47813` 会自动打开。
 2. 选择天气、等级、舰船级别和装配，然后点击**开始会话**。
 3. 第一次深渊前，复制货柜舱（`Ctrl+A`，`Ctrl+C`）。
 4. 每次深渊结束后，再次复制货柜舱：本次记录会发送到 Abyss Tracker。
@@ -51,8 +51,8 @@ EVE 必须把聊天记录写入文件（默认已开启）。
 
 ## 数据
 
-位于 `%APPDATA%\abyssup\`（Linux 下为 `~/.config/abyssup/`）：
-`config.json`、`names.json`（物品名称缓存）、`abyssup.log`，
+位于 `%APPDATA%\abysstracker-autosubmit\`（Linux 下为 `~/.config/abysstracker-autosubmit/`）：
+`config.json`、`names.json`（物品名称缓存）、`abysstracker-autosubmit.log`，
 以及文件夹 `pending/`、`sent/`、`incomplete/`、`rejected/`。
 
 令牌以明文保存在你的用户配置目录中，绝不会进入本仓库。
@@ -76,7 +76,7 @@ EVE 必须把聊天记录写入文件（默认已开启）。
 
 ```
 go test ./...
-GOOS=windows go build -ldflags "-H=windowsgui" -o abyssup.exe .
+GOOS=windows go build -ldflags "-H=windowsgui" -o abysstracker-autosubmit.exe .
 ```
 
 ## 验证状态

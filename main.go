@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"io"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -79,28 +80,29 @@ func main() {
 	noOpen := flag.Bool("no-open", false, "do not open the page in the browser at startup")
 	flag.Parse()
 
-	base, err := os.UserConfigDir()
-	if err != nil {
-		log.Fatal(err)
-	}
-	a := &App{dir: filepath.Join(base, "abyssup"), dryRun: *dryRun, jobs: make(chan job, 16), names: map[string]Item{}}
-	for _, d := range []string{"pending", "sent", "incomplete", "rejected"} {
-		if err := os.MkdirAll(filepath.Join(a.dir, d), 0o700); err != nil {
-			log.Fatal(err)
-		}
-	}
-
+	// Before anything touches the disk: an instance still running under the old name keeps its folder.
 	ln, err := net.Listen("tcp", listenAddr)
 	if err != nil {
-		// Port taken: abyssup is already running, just show its page.
+		// Port taken: the program is already running, just show its page.
 		if !*noOpen {
 			openBrowser(pageURL)
 		}
 		return
 	}
 
+	base, err := os.UserConfigDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+	a := &App{dir: dataDir(base), dryRun: *dryRun, jobs: make(chan job, 16), names: map[string]Item{}}
+	for _, d := range []string{"pending", "sent", "incomplete", "rejected"} {
+		if err := os.MkdirAll(filepath.Join(a.dir, d), 0o700); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	// No console on Windows (-H=windowsgui): the log file is the only trace.
-	if f, err := os.OpenFile(filepath.Join(a.dir, "abyssup.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600); err == nil {
+	if f, err := os.OpenFile(filepath.Join(a.dir, "abysstracker-autosubmit.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600); err == nil {
 		log.SetOutput(io.MultiWriter(os.Stderr, f))
 	}
 	a.load("config.json", &a.cfg)
@@ -117,8 +119,20 @@ func main() {
 	if !*noOpen {
 		openBrowser(pageURL)
 	}
-	log.Printf("abyssup ready on %s (dry-run=%v)", pageURL, a.dryRun)
+	log.Printf("abysstracker-autosubmit ready on %s (dry-run=%v)", pageURL, a.dryRun)
 	log.Fatal(http.Serve(ln, a.routes()))
+}
+
+const legacyName = "abyssup" // what the program was called up to v0.1.0-beta.1
+
+// dataDir returns the program's folder under base. A folder left by the old name (token, pending runs)
+// is carried over the first time.
+func dataDir(base string) string {
+	dir := filepath.Join(base, "abysstracker-autosubmit")
+	if _, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) {
+		os.Rename(filepath.Join(base, legacyName), dir) // fails on a new install: nothing to carry over
+	}
+	return dir
 }
 
 func (a *App) load(name string, v any) bool {

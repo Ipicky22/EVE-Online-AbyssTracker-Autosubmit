@@ -14,7 +14,7 @@ import (
 // Only public ESI calls are made: no character login is needed.
 const (
 	esiBase   = "https://esi.evetech.net/latest"
-	userAgent = "abyssup/0.1" // generic name: no personal data is sent to ESI
+	userAgent = "abysstracker-autosubmit/0.1" // generic name: no personal data is sent to ESI
 )
 
 var httpClient = &http.Client{Timeout: 15 * time.Second}

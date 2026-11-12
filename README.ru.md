@@ -5,14 +5,14 @@
 > Этот перевод не проверен носителем русского языка. Основной считается [английская версия](README.md).
 
 Автоматически отправляет ваши прохождения Бездны (Abyssal Deadspace) в EVE Online на [Abyss Tracker](https://abysstracker.com).
-Программа называется `abyssup`.
+Программа называется `abysstracker-autosubmit`.
 Она никогда не вмешивается в клиент EVE: читает только журнал локального чата, который EVE записывает на диск, и буфер обмена Windows.
 
 > **Статус: в разработке.** Отправка работает. Чтение буфера обмена Windows ещё не испытано на настоящем компьютере, см. [Состояние проверок](#состояние-проверок).
 
 ## Использование
 
-1. Запустите `abyssup.exe`: откроется страница `http://localhost:47813`.
+1. Запустите `abysstracker-autosubmit.exe`: откроется страница `http://localhost:47813`.
 2. Выберите погоду, уровень, класс корабля и фит, затем нажмите **Начать сессию**.
 3. Скопируйте грузовой отсек (`Ctrl+A`, `Ctrl+C`) перед первым прохождением.
 4. После каждого прохождения снова скопируйте грузовой отсек: прохождение отправится на Abyss Tracker.
@@ -52,8 +52,8 @@ EVE должна записывать чат в файл (так по умолч
 
 ## Данные
 
-В `%APPDATA%\abyssup\` (`~/.config/abyssup/` в Linux):
-`config.json`, `names.json` (кэш названий предметов), `abyssup.log`
+В `%APPDATA%\abysstracker-autosubmit\` (`~/.config/abysstracker-autosubmit/` в Linux):
+`config.json`, `names.json` (кэш названий предметов), `abysstracker-autosubmit.log`
 и папки `pending/`, `sent/`, `incomplete/`, `rejected/`.
 
 Токен хранится открытым текстом в вашем профиле пользователя и никогда не попадает в этот репозиторий.
@@ -77,7 +77,7 @@ EVE должна записывать чат в файл (так по умолч
 
 ```
 go test ./...
-GOOS=windows go build -ldflags "-H=windowsgui" -o abyssup.exe .
+GOOS=windows go build -ldflags "-H=windowsgui" -o abysstracker-autosubmit.exe .
 ```
 
 ## Состояние проверок

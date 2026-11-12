@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>abyssup</title>
+<title>AbyssTracker Autosubmit</title>
 <style>
   :root { color-scheme: light dark; }
   body { font: 16px/1.5 system-ui, sans-serif; max-width: 34rem; margin: 2rem auto; padding: 0 1rem; }
@@ -26,7 +26,7 @@
 </style>
 </head>
 <body>
-<h1>abyssup{{if .DryRun}} <small>({{.L.dryRunBanner}})</small>{{end}}</h1>
+<h1>AbyssTracker Autosubmit{{if .DryRun}} <small>({{.L.dryRunBanner}})</small>{{end}}</h1>
 
 <div class="state {{if .Active}}on{{else}}off{{end}}" role="status">
   <strong>{{if .Active}}{{.L.sessionOn}}{{else}}{{.L.sessionOff}}{{end}}</strong>

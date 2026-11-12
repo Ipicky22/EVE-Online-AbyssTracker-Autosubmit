@@ -5,14 +5,14 @@
 > Diese Übersetzung wurde nicht von einer Person mit Deutsch als Muttersprache geprüft. Maßgeblich ist die [englische Fassung](README.md).
 
 Sendet deine Abyssal-Deadspace-Runs aus EVE Online automatisch an [Abyss Tracker](https://abysstracker.com).
-Das Programm heißt `abyssup`.
+Das Programm heißt `abysstracker-autosubmit`.
 Es greift nie in den EVE-Client ein: Es liest nur das Lokal-Chatlog, das EVE auf die Festplatte schreibt, und die Windows-Zwischenablage.
 
 > **Status: in Arbeit.** Das Hochladen funktioniert. Das Lesen der Windows-Zwischenablage wurde noch nicht auf einem echten Rechner getestet, siehe [Prüfstand](#prüfstand).
 
 ## Verwendung
 
-1. Starte `abyssup.exe`: Die Seite `http://localhost:47813` öffnet sich.
+1. Starte `abysstracker-autosubmit.exe`: Die Seite `http://localhost:47813` öffnet sich.
 2. Wähle Wetter, Stufe, Schiffsklasse und Fitting und klicke auf **Sitzung starten**.
 3. Kopiere deinen Frachtraum (`Strg+A`, `Strg+C`) vor dem ersten Run.
 4. Kopiere nach jedem Run deinen Frachtraum erneut: Der Run wird an Abyss Tracker gesendet.
@@ -52,8 +52,8 @@ Gegenstandsnamen werden immer auf Englisch an Abyss Tracker gesendet.
 
 ## Daten
 
-In `%APPDATA%\abyssup\` (`~/.config/abyssup/` unter Linux):
-`config.json`, `names.json` (Cache der Gegenstandsnamen), `abyssup.log`
+In `%APPDATA%\abysstracker-autosubmit\` (`~/.config/abysstracker-autosubmit/` unter Linux):
+`config.json`, `names.json` (Cache der Gegenstandsnamen), `abysstracker-autosubmit.log`
 und die Ordner `pending/`, `sent/`, `incomplete/`, `rejected/`.
 
 Das Token wird im Klartext in deinem Benutzerprofil gespeichert, nie in diesem Repository.
@@ -77,7 +77,7 @@ Das Token wird im Klartext in deinem Benutzerprofil gespeichert, nie in diesem R
 
 ```
 go test ./...
-GOOS=windows go build -ldflags "-H=windowsgui" -o abyssup.exe .
+GOOS=windows go build -ldflags "-H=windowsgui" -o abysstracker-autosubmit.exe .
 ```
 
 ## Prüfstand

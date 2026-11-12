@@ -3,14 +3,14 @@
 [English](README.md) | **Français** | [Deutsch](README.de.md) | [Русский](README.ru.md) | [中文](README.zh.md)
 
 Envoie automatiquement vos runs d'Abysse d'EVE Online sur [Abyss Tracker](https://abysstracker.com).
-Le programme s'appelle `abyssup`.
+Le programme s'appelle `abysstracker-autosubmit`.
 Il ne touche jamais au client EVE : il lit seulement le journal de discussion Local qu'EVE écrit sur le disque, et le presse-papiers de Windows.
 
 > **État : en cours de développement.** L'envoi fonctionne. La lecture du presse-papiers Windows n'a pas encore été testée sur une vraie machine, voir [État des vérifications](#état-des-vérifications).
 
 ## Utilisation
 
-1. Lancez `abyssup.exe` : la page `http://localhost:47813` s'ouvre.
+1. Lancez `abysstracker-autosubmit.exe` : la page `http://localhost:47813` s'ouvre.
 2. Choisissez la météo, le tier, la coque et le fit, puis cliquez sur **Démarrer la session**.
 3. Copiez votre soute (`Ctrl+A`, `Ctrl+C`) avant le premier run.
 4. Après chaque run, copiez de nouveau votre soute : le run est envoyé sur Abyss Tracker.
@@ -50,8 +50,8 @@ Les noms d'objets sont toujours envoyés à Abyss Tracker en anglais.
 
 ## Données
 
-Dans `%APPDATA%\abyssup\` (`~/.config/abyssup/` sous Linux) :
-`config.json`, `names.json` (cache des noms d'objets), `abyssup.log`,
+Dans `%APPDATA%\abysstracker-autosubmit\` (`~/.config/abysstracker-autosubmit/` sous Linux) :
+`config.json`, `names.json` (cache des noms d'objets), `abysstracker-autosubmit.log`,
 et les dossiers `pending/`, `sent/`, `incomplete/`, `rejected/`.
 
 Le jeton est stocké en clair dans votre profil utilisateur, jamais dans ce dépôt.
@@ -75,7 +75,7 @@ Le jeton est stocké en clair dans votre profil utilisateur, jamais dans ce dép
 
 ```
 go test ./...
-GOOS=windows go build -ldflags "-H=windowsgui" -o abyssup.exe .
+GOOS=windows go build -ldflags "-H=windowsgui" -o abysstracker-autosubmit.exe .
 ```
 
 ## État des vérifications
