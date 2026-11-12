@@ -19,6 +19,9 @@ Il ne touche jamais au client EVE : il lit seulement le journal de discussion Lo
 Les runs sont publiés en public.
 Un run sans copie de soute fiable n'est pas envoyé : il est rangé dans `incomplete/`.
 
+La page liste les runs envoyés pendant la session, avec la durée et la valeur du butin calculées par Abyss Tracker.
+La liste se met à jour toute seule et n'est pas conservée quand une nouvelle session démarre.
+
 ## Installation (une fois)
 
 1. Créez un jeton sur `abysstracker.com/my-account/personal-access-tokens`.
@@ -56,6 +59,9 @@ et les dossiers `pending/`, `sent/`, `incomplete/`, `rejected/`.
 
 Le jeton est stocké en clair dans votre profil utilisateur, jamais dans ce dépôt.
 
+Au lancement puis toutes les 6 heures, le programme demande à GitHub la dernière release de ce dépôt, pour vous signaler sur la page qu'une version plus récente existe.
+La requête ne contient ni jeton ni donnée de personnage.
+
 ## Fonctionnement
 
 - **Personnage** : lu dans le fichier `Local_<date>_<heure>_<identifiant du personnage>.txt` le plus récent.
@@ -77,6 +83,8 @@ Le jeton est stocké en clair dans votre profil utilisateur, jamais dans ce dép
 go test ./...
 GOOS=windows go build -ldflags "-H=windowsgui" -o abysstracker-autosubmit.exe .
 ```
+
+Avant une release, mettez `version` (dans `update.go`) au nom du tag de la release.
 
 ## État des vérifications
 

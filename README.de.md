@@ -21,6 +21,9 @@ Es greift nie in den EVE-Client ein: Es liest nur das Lokal-Chatlog, das EVE auf
 Runs werden öffentlich veröffentlicht.
 Ein Run ohne verlässliche Frachtraum-Kopie wird nicht gesendet: Er wird in `incomplete/` abgelegt.
 
+Die Seite listet die in der Sitzung gesendeten Runs auf, mit der Dauer und dem Beutewert, die Abyss Tracker berechnet hat.
+Die Liste aktualisiert sich von selbst und wird nicht aufbewahrt, sobald eine neue Sitzung beginnt.
+
 ## Einrichtung (einmalig)
 
 1. Erstelle ein Token unter `abysstracker.com/my-account/personal-access-tokens`.
@@ -58,6 +61,9 @@ und die Ordner `pending/`, `sent/`, `incomplete/`, `rejected/`.
 
 Das Token wird im Klartext in deinem Benutzerprofil gespeichert, nie in diesem Repository.
 
+Beim Start und danach alle 6 Stunden fragt das Programm GitHub nach dem neuesten Release dieses Repositorys, um dir auf der Seite anzuzeigen, wenn es eine neuere Version gibt.
+Die Anfrage enthält weder Token noch Charakterdaten.
+
 ## Funktionsweise
 
 - **Charakter**: aus der neuesten Datei `Local_<Datum>_<Uhrzeit>_<Charakter-ID>.txt` gelesen.
@@ -79,6 +85,8 @@ Das Token wird im Klartext in deinem Benutzerprofil gespeichert, nie in diesem R
 go test ./...
 GOOS=windows go build -ldflags "-H=windowsgui" -o abysstracker-autosubmit.exe .
 ```
+
+Vor einem Release `version` in `update.go` auf den Release-Tag setzen.
 
 ## Prüfstand
 

@@ -21,6 +21,9 @@
 记录以公开方式发布。
 没有可靠货柜舱副本的记录不会发送，而是保存在 `incomplete/` 中。
 
+页面会列出本次会话中已发送的记录，以及 Abyss Tracker 计算出的时长和战利品价值。
+列表会自动更新，新会话开始后不再保留。
+
 ## 设置（只需一次）
 
 1. 在 `abysstracker.com/my-account/personal-access-tokens` 创建令牌。
@@ -57,6 +60,9 @@ EVE 必须把聊天记录写入文件（默认已开启）。
 
 令牌以明文保存在你的用户配置目录中，绝不会进入本仓库。
 
+启动时以及之后每 6 小时，程序会向 GitHub 查询本仓库的最新发布版本，以便在页面上提示有新版本。
+请求中不包含令牌，也不包含角色数据。
+
 ## 工作原理
 
 - **角色**：从最新的 `Local_<日期>_<时间>_<角色ID>.txt` 文件读取。
@@ -78,6 +84,8 @@ EVE 必须把聊天记录写入文件（默认已开启）。
 go test ./...
 GOOS=windows go build -ldflags "-H=windowsgui" -o abysstracker-autosubmit.exe .
 ```
+
+发布前，将 `update.go` 中的 `version` 改为发布标签。
 
 ## 验证状态
 
