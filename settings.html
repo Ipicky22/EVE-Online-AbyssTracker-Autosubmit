@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="{{.Lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AbyssTracker Autosubmit — {{.L.settings}}</title>
+{{template "style"}}
+</head>
+<body>
+<header class="top">
+  <div class="bar">
+    {{template "brand" .}}
+    <a class="btn" href="/">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path></svg>
+      {{.L.backToSession}}
+    </a>
+  </div>
+</header>
+
+<main class="settings">
+  <div>
+    <h1>{{.L.settings}}</h1>
+    <p class="lead">{{.L.settingsIntro}}</p>
+  </div>
+
+  {{if not .HasKey}}
+  <div class="banner" role="status">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8h.01"></path><path d="M11 12h1v5h1"></path></svg>
+    <div>{{.L.firstUse}}</div>
+  </div>
+  {{end}}
+
+  <form method="post" action="/settings">
+    <section class="card" aria-labelledby="tok-title">
+      <div class="between">
+        <h2 id="tok-title">{{.L.tokenLabel}}</h2>
+        <span class="badge{{if .HasKey}} ok{{end}}">{{if .HasKey}}{{.L.tokenOK}}{{else}}{{.L.tokenMissing}}{{end}}</span>
+      </div>
+      <label class="field">{{.L.tokenField}}
+        <input type="password" name="api_key" autocomplete="off" placeholder="{{if .HasKey}}{{.L.tokenKeep}}{{else}}{{.L.tokenPaste}}{{end}}">
+      </label>
+      <ol class="how">
+        <li>{{.L.tokenStep1}} <a href="https://abysstracker.com/my-account/personal-access-tokens" target="_blank" rel="noopener">abysstracker.com → My account → Personal access tokens</a></li>
+        <li>{{.L.tokenStep2}}</li>
+      </ol>
+      <p class="lock">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+        {{.L.tokenLocal}}
+      </p>
+    </section>
+
+    <section class="card" aria-labelledby="log-title">
+      <h2 id="log-title">{{.L.logDirLabel}}</h2>
+      <label class="field">{{.L.folder}}
+        <input type="text" class="mono" name="chatlog_dir" value="{{.ChatlogDir}}" autocomplete="off">
+        <span class="soft">{{.L.logDirHelp}}</span>
+      </label>
+    </section>
+
+    <section class="card" aria-labelledby="lang-title">
+      <h2 id="lang-title">{{.L.language}}</h2>
+      <div class="langs" role="radiogroup" aria-labelledby="lang-title">
+        {{range .Langs}}<label class="chip"><input type="radio" name="lang" value="{{.}}"{{if eq . $.Lang}} checked{{end}}><span>{{index $.LangNames .}}</span></label>{{end}}
+      </div>
+      <p class="soft small">{{.L.langNote}}</p>
+    </section>
+
+    <div class="save-row">
+      <button type="submit" class="primary">{{.L.save}}</button>
+      {{if .Saved}}
+      <span class="saved" role="status">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
+        {{.L.settingsSaved}}
+      </span>
+      {{end}}
+    </div>
+  </form>
+
+  <p class="note">{{.L.dataNote}} <code>{{.Dir}}</code><br>{{.L.updateNote}}</p>
+</main>
+</body>
+</html>

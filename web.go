@@ -1,7 +1,7 @@
 package main
 
 import (
-	_ "embed"
+	"embed"
 	"html/template"
 	"log"
 	"net/http"
@@ -10,25 +10,63 @@ import (
 	"strings"
 )
 
-//go:embed page.html
-var pageHTML string
+//go:embed page.html settings.html
+var pages embed.FS
 
-var pageTmpl = template.Must(template.New("page").Parse(pageHTML))
+var pageTmpl = template.Must(template.New("").Funcs(template.FuncMap{"isk": isk}).ParseFS(pages, "*.html"))
 
 var tierNames = []string{"Tranquil", "Calm", "Agitated", "Fierce", "Raging", "Chaotic", "Cataclysmic"}
+
+// step is one of the three things a run needs, as the page draws it.
+type step struct {
+	Title, Note string // keys in messages
+	State       string // done, now, todo or miss
+}
+
+// steps tells what the player is expected to do next: the headline, the copy hint that goes with it
+// (empty when there is nothing to copy now) and the state of each step. All texts are keys in messages.
+func steps(stage trackerState, base bool) (head, hint string, s [3]step) {
+	s = [3]step{{"stepBase", "baseDone", "done"}, {"stepRun", "runWait", "todo"}, {"stepLoot", "lootTodo", "todo"}}
+	switch {
+	case stage == awaitingLoot:
+		s[1], s[2] = step{"stepRun", "runDone", "done"}, step{"stepLoot", "waitCopy", "now"}
+		return "headAwait", "copyAfter", s
+	case stage == inAbyss:
+		s[1] = step{"stepRun", "runNow", "now"}
+		if !base {
+			s[0] = step{"stepBase", "baseMissing", "miss"}
+		}
+		return "headInAbyss", "", s
+	case base:
+		s[1].State = "now"
+		return "headReady", "", s
+	}
+	s[0] = step{"stepBase", "waitCopy", "now"}
+	return "headNeedBase", "copyBefore", s
+}
 
 type pageData struct {
 	L          map[string]string // interface texts in the current language
 	Lang       string
 	Langs      []string
 	LangNames  map[string]string
+	Version    string
+	Update     release
 	Status     string
 	Active     bool
 	DryRun     bool
 	Character  string
+	Head, Hint string // keys in messages; empty outside a session
+	Steps      [3]step
+	History    []histRun
+	Lost       int     // runs of the history the ship did not survive
+	Loot       float64 // total loot of the history, in ISK
 	HasKey     bool
 	ChatlogDir string
+	Dir        string // where the program keeps its files
+	Saved      bool   // the settings were just saved
 	S          Session
+	TierName   string
 	Fits       []Fit
 	FitsErr    string
 	Weathers   []string
@@ -39,6 +77,8 @@ type pageData struct {
 func (a *App) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", a.handlePage)
+	mux.HandleFunc("GET /live", a.handleLive)
+	mux.HandleFunc("GET /settings", a.handleSettingsPage)
 	mux.HandleFunc("POST /settings", a.handleSettings)
 	mux.HandleFunc("POST /session/start", a.handleStart)
 	mux.HandleFunc("POST /session/stop", a.handleStop)
@@ -51,6 +91,39 @@ func (a *App) routes() http.Handler {
 		}
 		protected.ServeHTTP(w, r)
 	})
+}
+
+// view gathers what the pages show. Lock held by the caller.
+func (a *App) view() pageData {
+	d := pageData{
+		L: catalog(a.cfg.Lang), Lang: a.cfg.Lang, Langs: langs, LangNames: langNames,
+		Version: version, Update: a.update, History: slices.Clone(a.history),
+		Status: a.status, Active: a.tracker != nil, DryRun: a.dryRun,
+		HasKey: a.cfg.APIKey != "", ChatlogDir: a.chatlogDir(), Dir: a.dir,
+		S: a.cfg.Session, Fits: a.fits,
+		Weathers: weatherValues, Tiers: tierNames, Hulls: hullValues,
+	}
+	if t := d.S.Tier; t >= 0 && t < len(tierNames) {
+		d.TierName = tierNames[t]
+	}
+	if a.tracker != nil {
+		d.Character = a.char.Name
+		d.Head, d.Hint, d.Steps = steps(a.tracker.Progress())
+	}
+	for _, h := range d.History {
+		if !h.Survived {
+			d.Lost++
+		}
+		d.Loot += h.Loot
+	}
+	return d
+}
+
+func render(w http.ResponseWriter, name string, d pageData) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := pageTmpl.ExecuteTemplate(w, name, d); err != nil {
+		log.Printf("%s: %v", name, err)
+	}
 }
 
 func (a *App) handlePage(w http.ResponseWriter, r *http.Request) {
@@ -70,22 +143,26 @@ func (a *App) handlePage(w http.ResponseWriter, r *http.Request) {
 	if fitsErr == "" {
 		a.fits = fits
 	}
-	d := pageData{
-		L: catalog(a.cfg.Lang), Lang: a.cfg.Lang, Langs: langs, LangNames: langNames,
-		Status: a.status, Active: a.tracker != nil, DryRun: a.dryRun,
-		HasKey: a.cfg.APIKey != "", ChatlogDir: a.chatlogDir(),
-		S: a.cfg.Session, Fits: a.fits, FitsErr: fitsErr,
-		Weathers: weatherValues, Tiers: tierNames, Hulls: hullValues,
-	}
-	if a.tracker != nil {
-		d.Character = a.char.Name
-	}
+	d := a.view()
 	a.mu.Unlock()
+	d.FitsErr = fitsErr
+	render(w, "page.html", d)
+}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := pageTmpl.Execute(w, d); err != nil {
-		log.Printf("page: %v", err)
-	}
+// handleLive renders the session state and the history alone: the page asks for them again every few seconds.
+func (a *App) handleLive(w http.ResponseWriter, r *http.Request) {
+	a.mu.Lock()
+	d := a.view()
+	a.mu.Unlock()
+	render(w, "live", d)
+}
+
+func (a *App) handleSettingsPage(w http.ResponseWriter, r *http.Request) {
+	a.mu.Lock()
+	d := a.view()
+	a.mu.Unlock()
+	d.Saved = r.URL.Query().Has("saved")
+	render(w, "settings.html", d)
 }
 
 func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +183,7 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 	a.save("config.json", a.cfg)
 	a.mu.Unlock()
 	a.say("settingsSaved")
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings?saved", http.StatusSeeOther)
 }
 
 func (a *App) handleStart(w http.ResponseWriter, r *http.Request) {

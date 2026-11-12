@@ -73,6 +73,8 @@ type App struct {
 	tracker *Tracker // nil outside a session
 	stop    context.CancelFunc
 	status  string
+	update  release   // newer release to offer; zero when up to date or not checked yet
+	history []histRun // runs sent since the session started, newest first
 }
 
 func main() {
@@ -115,6 +117,7 @@ func main() {
 	}
 
 	go a.work()
+	go a.watchUpdates()
 	go watchClipboard(context.Background(), a.active, a.onClipboard)
 	if !*noOpen {
 		openBrowser(pageURL)
@@ -182,6 +185,7 @@ func (a *App) startSession(s Session) (errKey string, errArgs []any) {
 	if a.tracker == nil {
 		ctx, cancel := context.WithCancel(context.Background())
 		a.tracker, a.stop = &Tracker{}, cancel
+		a.history = nil // the history of the previous session stays readable until a new one starts
 		go a.tail(ctx, dir)
 		go a.flushPending()
 	}
@@ -402,6 +406,7 @@ func (a *App) flushPending() {
 			os.Rename(path, filepath.Join(a.dir, "sent", e.Name()))
 			a.say("sentStatus", runURL+runID) // the status keeps the link
 			notify(tr(a.lang(), "sentNotify"), runURL+runID)
+			a.remember(runID, body)
 		case errors.Is(err, errRejected):
 			os.Rename(path, filepath.Join(a.dir, "rejected", e.Name()))
 			notify(a.say("rejected", strings.TrimPrefix(err.Error(), errRejected.Error()+": ")), "")

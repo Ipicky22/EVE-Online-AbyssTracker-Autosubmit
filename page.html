@@ -4,88 +4,285 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AbyssTracker Autosubmit</title>
-<style>
-  :root { color-scheme: light dark; }
-  body { font: 16px/1.5 system-ui, sans-serif; max-width: 34rem; margin: 2rem auto; padding: 0 1rem; }
-  h1 { font-size: 1.4rem; margin-bottom: .25rem; }
-  form { display: grid; gap: .75rem; }
-  label { display: grid; gap: .25rem; font-weight: 600; }
-  select, input, button { font: inherit; padding: .5rem; }
-  button { cursor: pointer; }
-  .row { display: flex; gap: .75rem; flex-wrap: wrap; }
-  .row > * { flex: 1; }
-  .state { padding: .5rem .75rem; border-left: .25rem solid; margin: 1rem 0; }
-  .on { border-color: #2a9d4b; }
-  .off { border-color: #888; }
-  pre { white-space: pre-wrap; margin: 0; font: inherit; }
-  details { margin-top: 2rem; }
-  summary { cursor: pointer; font-weight: 600; margin-bottom: .75rem; }
-  small { font-weight: 400; opacity: .75; }
-  label.check { display: flex; gap: .5rem; align-items: baseline; font-weight: 400; }
-  label.check small { display: block; }
-</style>
+{{template "style"}}
 </head>
 <body>
-<h1>AbyssTracker Autosubmit{{if .DryRun}} <small>({{.L.dryRunBanner}})</small>{{end}}</h1>
-
-<div class="state {{if .Active}}on{{else}}off{{end}}" role="status">
-  <strong>{{if .Active}}{{.L.sessionOn}}{{else}}{{.L.sessionOff}}{{end}}</strong>
-  {{if .Character}}— {{.Character}}{{end}}
-  {{if .Status}}<pre>{{.Status}}</pre>{{end}}
-</div>
-
-<form method="post" action="/session/start">
-  <div class="row">
-    <label>{{.L.weather}}
-      <select name="weather">
-        {{range .Weathers}}<option {{if eq . $.S.Weather}}selected{{end}}>{{.}}</option>{{end}}
-      </select>
-    </label>
-    <label>{{.L.tier}}
-      <select name="tier">
-        {{range $i, $n := .Tiers}}<option value="{{$i}}" {{if eq $i $.S.Tier}}selected{{end}}>T{{$i}} – {{$n}}</option>{{end}}
-      </select>
-    </label>
+<header class="top">
+  <div class="bar">
+    {{template "brand" .}}
+    <div class="actions">
+      {{if .Update.Tag}}
+      <a class="btn info" href="{{.Update.URL}}" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+        {{.L.newVersion}} · {{.Update.Tag}}
+      </a>
+      {{end}}
+      <a class="btn" href="/settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
+        {{.L.settings}}
+      </a>
+    </div>
   </div>
-  <label>{{.L.hull}}
-    <select name="hull">
-      {{range .Hulls}}<option {{if eq . $.S.Hull}}selected{{end}}>{{.}}</option>{{end}}
-    </select>
-  </label>
-  <label>{{.L.fit}} <small>{{if .FitsErr}}{{.FitsErr}}{{else if not .HasKey}}{{.L.fitNeedsToken}}{{end}}</small>
-    <select name="fit">
-      <option value="">{{.L.none}}</option>
-      {{range .Fits}}<option value="{{.ID}}" {{if eq .ID $.S.FitID}}selected{{end}}>{{.Ship.Name}} — {{.Name}}</option>{{end}}
-    </select>
-  </label>
-  <label class="check">
-    <input type="checkbox" name="all_cans" {{if .S.AllCans}}checked{{end}}>
-    <span>{{.L.allCans}} <small>{{.L.allCansHelp}}</small></span>
-  </label>
-  <button type="submit">{{if .Active}}{{.L.updateSession}}{{else}}{{.L.startSession}}{{end}}</button>
-</form>
-{{if .Active}}
-<form method="post" action="/session/stop" style="margin-top:.75rem">
-  <button type="submit">{{.L.endSession}}</button>
-</form>
-{{end}}
+</header>
 
-<details {{if not .HasKey}}open{{end}}>
-  <summary>{{.L.settings}}</summary>
-  <form method="post" action="/settings">
-    <label>{{.L.language}}
-      <select name="lang">
-        {{range .Langs}}<option value="{{.}}" {{if eq . $.Lang}}selected{{end}}>{{index $.LangNames .}}</option>{{end}}
-      </select>
-    </label>
-    <label>{{.L.tokenLabel}} <small>{{if .HasKey}}{{.L.tokenSaved}}{{else}}{{.L.tokenHowTo}}{{end}}</small>
-      <input type="password" name="api_key" autocomplete="off">
-    </label>
-    <label>{{.L.logDirLabel}} <small>{{.L.logDirHelp}}</small>
-      <input type="text" name="chatlog_dir" value="{{.ChatlogDir}}" autocomplete="off">
-    </label>
-    <button type="submit">{{.L.save}}</button>
-  </form>
-</details>
+<main class="session">
+  <div class="col" id="live">{{template "live" .}}</div>
+
+  <aside class="card side" aria-labelledby="session-title">
+    <h2 id="session-title">{{.L.sessionTitle}}</h2>
+    <p class="help">{{.L.sessionHelp}}</p>
+    <form method="post" action="/session/start" class="stack">
+      <fieldset>
+        <legend>{{.L.weather}}</legend>
+        <div class="grid g3">
+          {{range .Weathers}}<label class="chip"><input type="radio" name="weather" value="{{.}}"{{if eq . $.S.Weather}} checked{{end}}><span>{{.}}</span></label>{{end}}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>{{.L.tier}} <span class="soft" id="tier-name">— {{.TierName}}</span></legend>
+        <div class="grid g7">
+          {{range $i, $n := .Tiers}}<label class="chip" title="{{$n}}"><input type="radio" name="tier" value="{{$i}}" data-name="{{$n}}"{{if eq $i $.S.Tier}} checked{{end}}><span>T{{$i}}</span></label>{{end}}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>{{.L.hull}}</legend>
+        <div class="grid g3">
+          {{range .Hulls}}<label class="chip"><input type="radio" name="hull" value="{{.}}"{{if eq . $.S.Hull}} checked{{end}}><span>{{index $.L (print "hull" .)}}</span></label>{{end}}
+        </div>
+      </fieldset>
+      <label class="field">{{.L.fit}}
+        <select name="fit">
+          <option value="">{{.L.none}}</option>
+          {{range .Fits}}<option value="{{.ID}}" {{if eq .ID $.S.FitID}}selected{{end}}>{{.Ship.Name}} — {{.Name}}</option>{{end}}
+        </select>
+        <span class="soft">{{if .FitsErr}}{{.FitsErr}}{{else if not .HasKey}}{{.L.fitNeedsToken}}{{else}}{{.L.fitHelp}}{{end}}</span>
+      </label>
+      <label class="check">
+        <input type="checkbox" name="all_cans" {{if .S.AllCans}}checked{{end}}>
+        <span>{{.L.allCans}}<span class="sub">{{.L.allCansHelp}}</span></span>
+      </label>
+      <div class="buttons">
+        <button type="submit" class="primary">{{if .Active}}{{.L.updateSession}}{{else}}{{.L.startSession}}{{end}}</button>
+        {{if .Active}}<button type="submit" class="secondary" formaction="/session/stop">{{.L.endSession}}</button>{{end}}
+      </div>
+    </form>
+  </aside>
+</main>
+<script>
+  // The session state and the history refresh by themselves: no need to leave the game to reload the page.
+  const live = document.getElementById('live');
+  let shown = '';
+  setInterval(async () => {
+    try {
+      const r = await fetch('/live');
+      const html = r.ok ? await r.text() : shown;
+      if (html !== shown) live.innerHTML = shown = html;
+    } catch {}
+  }, 3000);
+  document.querySelectorAll('input[name=tier]').forEach(i => i.addEventListener('change', () => {
+    document.getElementById('tier-name').textContent = '— ' + i.dataset.name;
+  }));
+</script>
 </body>
 </html>
+
+{{define "brand"}}
+<div class="brand">
+  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#0F172A"></rect><circle cx="16" cy="16" r="8" stroke="#67E8F9" stroke-width="2"></circle><circle cx="16" cy="16" r="3" fill="#67E8F9"></circle></svg>
+  <div class="name">AbyssTracker Autosubmit</div>
+  <span class="pill">{{.Version}}</span>
+  {{if .DryRun}}<span class="pill warn">{{.L.dryRunBanner}}</span>{{end}}
+</div>
+{{end}}
+
+{{define "live"}}
+<section class="card state" aria-label="{{if .Active}}{{.L.sessionOn}}{{else}}{{.L.sessionOff}}{{end}}">
+  <div class="state-row">
+    <div class="state-name{{if .Active}} on{{end}}" role="status">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="label">{{if .Active}}{{.L.sessionOn}}{{else}}{{.L.sessionOff}}{{end}}</span>
+      {{if .Active}}<span class="summary">· {{.S.Weather}} T{{.S.Tier}} · {{index .L (print "hull" .S.Hull)}}</span>{{end}}
+    </div>
+    {{if .Character}}
+    <div class="who">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
+      {{.Character}}
+    </div>
+    {{end}}
+  </div>
+  {{if .Active}}
+  <h1>{{index .L .Head}}</h1>
+  {{if .Hint}}
+  <div class="hint">
+    <span>{{.L.inCargo}}</span>
+    <kbd>Ctrl</kbd><span aria-hidden="true">+</span><kbd>A</kbd>
+    <span>{{.L.then}}</span>
+    <kbd>Ctrl</kbd><span aria-hidden="true">+</span><kbd>C</kbd>
+    <span>— {{index .L .Hint}}</span>
+  </div>
+  {{end}}
+  <ol class="steps">
+    {{range .Steps}}<li class="{{.State}}"{{if eq .State "now"}} aria-current="step"{{end}}>
+      <span class="num" aria-hidden="true">{{if eq .State "done"}}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"></path></svg>{{end}}</span>
+      <div><div class="t">{{index $.L .Title}}</div><div class="n">{{index $.L .Note}}</div></div>
+    </li>{{end}}
+  </ol>
+  {{else}}
+  <h1>{{.L.headIdle}}</h1>
+  <p class="lead">{{.L.introIdle}}</p>
+  {{end}}
+  {{if .Status}}<pre class="status">{{.Status}}</pre>{{end}}
+</section>
+
+<section class="card hist" aria-labelledby="hist-title">
+  <div class="hist-head">
+    <h2 id="hist-title">{{.L.historyTitle}}</h2>
+    <span class="auto">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 4v5h-5"></path></svg>
+      {{.L.autoUpdate}}
+    </span>
+  </div>
+  {{if .History}}
+  <div class="totals">
+    <span>{{.L.runsCount}} <strong>{{len .History}}</strong></span>
+    {{if .Lost}}<span>{{.L.lostCount}} <strong>{{.Lost}}</strong></span>{{end}}
+    <span>{{.L.lootTotal}} <strong>{{isk .Lang .Loot}} ISK</strong></span>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th scope="col">{{.L.colStart}}</th><th scope="col">{{.L.colAbyss}}</th><th scope="col">{{.L.colDuration}}</th><th scope="col">{{.L.colLoot}}</th></tr></thead>
+      <tbody>
+      {{range .History}}<tr>
+        <td>{{.Time}}</td>
+        <td><a href="{{.URL}}" target="_blank" rel="noopener">{{.Weather}} T{{.Tier}}</a></td>
+        <td>{{.Length}}</td>
+        <td>{{if not .Survived}}<span class="lost">{{$.L.lostShort}}</span>{{else if .Valued}}<span class="isk">{{isk $.Lang .Loot}}</span>{{else if .Pending}}<span class="pending">{{$.L.valuing}}</span>{{else}}—{{end}}</td>
+      </tr>{{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="empty">{{.L.historyEmpty}}</p>
+  {{end}}
+  <p class="note">{{.L.historyNote}}</p>
+</section>
+{{end}}
+
+{{define "style"}}
+<style>
+  /* Fonts: Inter and Space Grotesk are used when installed. Nothing is loaded from the network. */
+  :root { --accent: #0E7490; --ink: #0F172A; --soft: #526174; --line: #E3E8EF; --edge: #D8DEE8; --head: 'Space Grotesk', Inter, system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: #F5F7FA; color: var(--ink); font: 15px/1.5 Inter, system-ui, sans-serif; }
+  a { color: var(--accent); }
+  a:hover { color: #155E75; }
+  h1 { margin: 20px 0 8px; font: 600 30px/1.2 var(--head); letter-spacing: -0.02em; }
+  h2 { margin: 0; font: 600 19px/1.5 var(--head); }
+  .soft { font-weight: 400; color: var(--soft); }
+  .card { background: #FFFFFF; border: 1px solid var(--line); border-radius: 16px; }
+
+  .top { background: #FFFFFF; border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1120px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+  .brand, .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .actions { gap: 8px; }
+  .name { font: 600 18px/1.5 var(--head); letter-spacing: -0.01em; }
+  .pill { font-size: 12px; font-weight: 500; color: var(--soft); background: #F1F4F8; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
+  .pill.warn { font-weight: 600; color: #92400E; background: #FFFBEB; border-color: #FDE68A; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; background: #FFFFFF; border: 1px solid var(--edge); color: var(--ink); font-size: 14px; font-weight: 500; text-decoration: none; }
+  .btn:hover { color: var(--ink); border-color: #B8C2D0; }
+  .btn.info, .btn.info:hover { background: #ECFEFF; border-color: #A5F3FC; color: #155E75; }
+
+  .session { max-width: 1120px; margin: 0 auto; padding: 32px 24px 24px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 24px; }
+  .col { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+
+  .state { padding: 28px; }
+  .state-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+  .state-name { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .dot { width: 10px; height: 10px; border-radius: 999px; background: #94A3B8; box-shadow: 0 0 0 4px #EEF1F5; }
+  .label { font-weight: 600; color: var(--soft); }
+  .on .dot { background: #16A34A; box-shadow: 0 0 0 4px #DCFCE7; }
+  .on .label { color: #15803D; }
+  .summary { font-size: 14px; color: var(--soft); }
+  .who { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #334155; }
+  .lead { margin: 0; color: #475569; max-width: 520px; }
+  .hint { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #475569; }
+  kbd { font: 600 13px/1 Inter, system-ui, sans-serif; padding: 6px 9px; background: #FFFFFF; border: 1px solid var(--edge); border-bottom-width: 2px; border-radius: 7px; color: var(--ink); }
+  .steps { list-style: none; margin: 24px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px; counter-reset: step; }
+  .steps li { counter-increment: step; flex: 1 1 180px; display: flex; gap: 12px; padding: 14px; border-radius: 12px; background: #FFFFFF; border: 1px solid var(--line); }
+  .num { flex: none; width: 28px; height: 28px; border-radius: 999px; background: #F1F4F8; color: var(--soft); font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .num:empty::before { content: counter(step); }
+  .steps .t { font-weight: 600; font-size: 14px; }
+  .steps .n { font-size: 13px; color: var(--soft); }
+  .steps .done { background: #F6FBF8; border-color: #D1F0DC; }
+  .steps .done .num { background: #DCFCE7; color: #15803D; }
+  .steps .now { border: 2px solid var(--accent); padding: 13px; }
+  .steps .now .num { background: var(--accent); color: #FFFFFF; }
+  .steps .now .n { color: #334155; }
+  .steps .miss { background: #FFFBEB; border-color: #FDE68A; }
+  .steps .miss .num { background: #FDE68A; color: #92400E; }
+  .steps .miss .num:empty::before { content: "!"; }
+  .steps .miss .n { color: #92400E; }
+  .status { margin: 20px 0 0; padding-top: 16px; border-top: 1px solid #EEF1F5; white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.5 Inter, system-ui, sans-serif; color: var(--soft); }
+
+  .hist { padding: 24px 28px; }
+  .hist-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+  .auto { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--soft); }
+  .totals { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 8px; }
+  .totals span { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: #F1F4F8; color: #334155; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; min-width: 480px; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 10px 12px; color: var(--soft); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--line); }
+  td { padding: 14px 12px; border-bottom: 1px solid #EEF1F5; color: #334155; font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { padding-left: 0; }
+  th:last-child, td:last-child { padding-right: 0; text-align: right; }
+  td a { font-weight: 600; text-decoration: none; }
+  .isk { font-weight: 600; color: var(--ink); }
+  .pending { color: var(--soft); font-style: italic; }
+  .lost { display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: #FEF3F2; color: #B42318; }
+  .empty { margin: 16px 0 0; color: #475569; }
+  .note { margin: 14px 0 0; font-size: 13px; color: var(--soft); }
+
+  .side { flex: 1 1 340px; min-width: 0; padding: 24px; }
+  .help { margin: 4px 0 20px; font-size: 13px; color: var(--soft); }
+  .stack { display: flex; flex-direction: column; gap: 20px; }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  legend { font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px; padding: 0; }
+  .grid { display: grid; gap: 6px; }
+  .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .g7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .chip { position: relative; min-width: 0; cursor: pointer; }
+  .chip input { position: absolute; opacity: 0; pointer-events: none; }
+  .chip span { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 6px; border-radius: 10px; border: 1px solid var(--edge); background: #FFFFFF; color: #334155; font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chip input:checked + span { background: var(--accent); border-color: var(--accent); color: #FFFFFF; font-weight: 600; }
+  .chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .field { display: flex; flex-direction: column; gap: 8px; font-size: 13px; font-weight: 600; color: #334155; }
+  select, input[type=text], input[type=password] { font: 400 15px Inter, system-ui, sans-serif; min-height: 44px; padding: 0 12px; border: 1px solid var(--edge); border-radius: 10px; background: #FFFFFF; color: var(--ink); min-width: 0; }
+  input.mono { font: 400 14px ui-monospace, 'SF Mono', Consolas, monospace; }
+  .check { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .check input { flex: none; width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); }
+  .sub { display: block; font-size: 13px; font-weight: 400; color: var(--soft); margin-top: 2px; }
+  .buttons { display: flex; flex-direction: column; gap: 8px; }
+  button { cursor: pointer; border-radius: 10px; }
+  .primary { width: 100%; min-height: 48px; border: 1px solid var(--accent); background: var(--accent); color: #FFFFFF; font: 600 15px Inter, system-ui, sans-serif; }
+  .secondary { width: 100%; min-height: 46px; border: 1px solid var(--edge); background: #FFFFFF; color: #334155; font: 500 15px Inter, system-ui, sans-serif; }
+
+  .settings { max-width: 720px; margin: 0 auto; padding: 40px 24px 56px; display: flex; flex-direction: column; gap: 24px; }
+  .settings h1 { margin: 0 0 6px; }
+  .settings form { display: flex; flex-direction: column; gap: 24px; }
+  .settings .card { padding: 24px 28px; display: flex; flex-direction: column; gap: 14px; }
+  .banner { display: flex; gap: 12px; align-items: flex-start; padding: 16px; border-radius: 12px; background: #ECFEFF; border: 1px solid #A5F3FC; color: #164E63; font-size: 14px; }
+  .banner svg { flex: none; margin-top: 1px; }
+  .between { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+  .badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: #FFF7ED; color: #9A3412; }
+  .badge.ok { background: #DCFCE7; color: #166534; }
+  .how { margin: 0; padding-left: 20px; font-size: 14px; color: #475569; display: flex; flex-direction: column; gap: 4px; }
+  .lock { margin: 0; display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--soft); }
+  .langs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .langs .chip span { padding: 0 16px; }
+  .small { margin: 0; font-size: 13px; }
+  .save-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .save-row .primary { width: auto; padding: 0 28px; }
+  .saved { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; color: #15803D; font-weight: 500; }
+  code { font-family: ui-monospace, Consolas, monospace; background: #EEF1F5; padding: 1px 6px; border-radius: 4px; overflow-wrap: anywhere; }
+</style>
+{{end}}

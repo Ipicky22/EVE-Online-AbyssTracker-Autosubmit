@@ -12,10 +12,9 @@ import (
 	"strings"
 )
 
-const (
-	ewbBase = "https://api.eveworkbench.com/v1"
-	runURL  = "https://abysstracker.com/run/"
-)
+var ewbBase = "https://api.eveworkbench.com/v1" // a variable so that tests can point it at a fake server
+
+const runURL = "https://abysstracker.com/run/"
 
 // Values sent to Abyss Tracker. The public spec does not list them: they come from the site's former code
 // (molbal/abyss-tracker, CreateRunHelper.php) and from a test run accepted by the server.

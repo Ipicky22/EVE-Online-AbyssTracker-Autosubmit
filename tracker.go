@@ -161,6 +161,12 @@ func (t *Tracker) OnCargo(c Cargo, at time.Time) []Outcome {
 	return nil
 }
 
+// Progress tells the page where the current run stands, and whether a cargo copy made before it is known.
+// A run already in progress when the session started has none that counts.
+func (t *Tracker) Progress() (stage trackerState, base bool) {
+	return t.state, t.base != nil && !t.ignore
+}
+
 // Stop ends the session: a run still waiting for its loot will never be completed.
 func (t *Tracker) Stop() []Outcome {
 	return t.dropAwaiting("notSentStopped")
