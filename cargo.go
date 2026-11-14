@@ -20,7 +20,8 @@ func parseCargo(text string) (Cargo, bool) {
 			continue
 		}
 		cols := strings.Split(line, "\t")
-		name := strings.TrimSpace(cols[0])
+		// The client marks translated names with a trailing "*": ESI does not know that mark.
+		name := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(cols[0]), "*"))
 		if len(cols) < 2 || name == "" {
 			return nil, false
 		}

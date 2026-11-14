@@ -15,6 +15,8 @@ func TestParseCargo(t *testing.T) {
 			Cargo{"Tranquil Exotic Filament": 2, "Scourge Light Missile": 1234}},
 		{"French, non-breaking space", "Filament exotique placide\t1\nMissile léger Scourge\t1 234\n",
 			Cargo{"Filament exotique placide": 1, "Missile léger Scourge": 1234}},
+		{"French, translated names marked with *", "Filament de tempête paisible*\t3\nCondensat point-zéro*\t12\n",
+			Cargo{"Filament de tempête paisible": 3, "Condensat point-zéro": 12}},
 		{"empty quantity = 1, stacks added up", "Small Shield Booster I\t\tShield Booster\nTritanium\t5\nTritanium\t7",
 			Cargo{"Small Shield Booster I": 1, "Tritanium": 12}},
 	}
