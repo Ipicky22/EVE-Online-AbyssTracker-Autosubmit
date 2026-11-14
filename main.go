@@ -75,6 +75,8 @@ type App struct {
 	status  string
 	update  release   // newer release to offer; zero when up to date or not checked yet
 	history []histRun // runs sent since the session started, newest first
+
+	quit func() // stops the program; set once in main
 }
 
 func main() {
@@ -123,7 +125,19 @@ func main() {
 		openBrowser(pageURL)
 	}
 	log.Printf("abysstracker-autosubmit ready on %s (dry-run=%v)", pageURL, a.dryRun)
-	log.Fatal(http.Serve(ln, a.routes()))
+	srv := &http.Server{Handler: a.routes()}
+	done := make(chan struct{})
+	// Shutdown rather than os.Exit: the goodbye page must reach the browser before the process ends.
+	a.quit = sync.OnceFunc(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		srv.Shutdown(ctx)
+		close(done)
+	})
+	if err := srv.Serve(ln); err != http.ErrServerClosed {
+		log.Fatal(err)
+	}
+	<-done // Serve returns as soon as the shutdown starts, not when it ends
 }
 
 const legacyName = "abyssup" // what the program was called up to v0.1.0-beta.1

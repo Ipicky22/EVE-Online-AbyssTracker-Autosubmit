@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-//go:embed page.html settings.html
+//go:embed page.html settings.html quit.html
 var pages embed.FS
 
 var pageTmpl = template.Must(template.New("").Funcs(template.FuncMap{"isk": isk}).ParseFS(pages, "*.html"))
@@ -82,6 +82,7 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("POST /settings", a.handleSettings)
 	mux.HandleFunc("POST /session/start", a.handleStart)
 	mux.HandleFunc("POST /session/stop", a.handleStop)
+	mux.HandleFunc("POST /quit", a.handleQuit)
 	// Another site open in the browser must neither post here (CSRF) nor read the page (DNS rebinding).
 	protected := http.NewCrossOriginProtection().Handler(mux)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -212,4 +213,15 @@ func (a *App) handleStop(w http.ResponseWriter, r *http.Request) {
 	a.stopSession()
 	a.say("sessionEnded")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// handleQuit shows the goodbye page, then stops the program: with no console and no tray icon,
+// the page is the only way out short of the task manager.
+func (a *App) handleQuit(w http.ResponseWriter, r *http.Request) {
+	a.mu.Lock()
+	d := a.view()
+	a.mu.Unlock()
+	render(w, "quit.html", d)
+	log.Print("quit asked from the page")
+	go a.quit() // not inline: the shutdown waits for this very request to end
 }

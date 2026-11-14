@@ -21,6 +21,12 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
         {{.L.settings}}
       </a>
+      <form method="post" action="/quit"{{if .Active}} onsubmit="return confirm({{.L.quitConfirm}})"{{end}}>
+        <button type="submit" class="btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v9"></path><path d="M6.4 6.6a8 8 0 1 0 11.2 0"></path></svg>
+          {{.L.quit}}
+        </button>
+      </form>
     </div>
   </div>
 </header>
@@ -194,7 +200,7 @@
   .name { font: 600 18px/1.5 var(--head); letter-spacing: -0.01em; }
   .pill { font-size: 12px; font-weight: 500; color: var(--soft); background: #F1F4F8; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
   .pill.warn { font-weight: 600; color: #92400E; background: #FFFBEB; border-color: #FDE68A; }
-  .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; background: #FFFFFF; border: 1px solid var(--edge); color: var(--ink); font-size: 14px; font-weight: 500; text-decoration: none; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; background: #FFFFFF; border: 1px solid var(--edge); color: var(--ink); font-family: inherit; font-size: 14px; font-weight: 500; text-decoration: none; }
   .btn:hover { color: var(--ink); border-color: #B8C2D0; }
   .btn.info, .btn.info:hover { background: #ECFEFF; border-color: #A5F3FC; color: #155E75; }
 

@@ -15,6 +15,7 @@ Il ne touche jamais au client EVE : il lit seulement le journal de discussion Lo
 3. Copiez votre soute (`Ctrl+A`, `Ctrl+C`) avant le premier run.
 4. Après chaque run, copiez de nouveau votre soute : le run est envoyé sur Abyss Tracker.
 5. Après un changement de système ou un amarrage, recopiez votre soute avant le run suivant.
+6. Pour arrêter le programme, cliquez sur **Quitter** dans la page : fermer l'onglet ne l'arrête pas.
 
 Les runs sont publiés en public.
 Un run sans copie de soute fiable n'est pas envoyé : il est rangé dans `incomplete/`.

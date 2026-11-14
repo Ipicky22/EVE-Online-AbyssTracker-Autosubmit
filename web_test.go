@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestSteps(t *testing.T) {
@@ -54,6 +55,10 @@ func TestPagesRender(t *testing.T) {
 				!strings.Contains(page, "— Raging") || !strings.Contains(page, "v9.9.9") {
 				t.Errorf("%s, %s: session page incomplete:\n%s", lang, name, page)
 			}
+			// Quitting during a session loses the run in progress: only then must the page ask first.
+			if !strings.Contains(page, `action="/quit"`) || strings.Contains(page, "confirm(") != (tr != nil) {
+				t.Errorf("%s, %s: quit button or its confirmation is wrong", lang, name)
+			}
 			if tr != nil && !strings.Contains(page, "Pilot") {
 				t.Errorf("%s, %s: character missing", lang, name)
 			}
@@ -83,6 +88,24 @@ func TestSessionPageWarnsWithoutToken(t *testing.T) {
 		page := rec.Body.String()
 		if got := strings.Contains(page, `class="banner warn"`) && strings.Contains(page, "No Abyss Tracker token set"); got != want {
 			t.Errorf("token %q: warning shown = %v, want %v", key, got, want)
+		}
+	}
+}
+
+// Quit must answer with a full goodbye page in every language, then stop the program.
+func TestQuit(t *testing.T) {
+	for _, lang := range langs {
+		stopped := make(chan struct{})
+		a := &App{cfg: Config{Lang: lang}, quit: func() { close(stopped) }}
+		rec := httptest.NewRecorder()
+		a.routes().ServeHTTP(rec, httptest.NewRequest("POST", "http://localhost:47813/quit", nil))
+		if page := rec.Body.String(); !strings.HasSuffix(strings.TrimSpace(page), "</html>") || !strings.Contains(page, tr(lang, "quitDone")) {
+			t.Errorf("%s: goodbye page incomplete:\n%s", lang, page)
+		}
+		select {
+		case <-stopped:
+		case <-time.After(time.Second):
+			t.Errorf("%s: the program was not stopped", lang)
 		}
 	}
 }

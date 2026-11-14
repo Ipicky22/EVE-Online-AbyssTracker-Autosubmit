@@ -15,6 +15,7 @@ It never touches the EVE client: it only reads the Local chat log that EVE write
 3. Copy your cargo hold (`Ctrl+A`, `Ctrl+C`) before the first run.
 4. After each run, copy your cargo hold again: the run is sent to Abyss Tracker.
 5. After changing system or docking, copy your cargo hold again before the next run.
+6. To stop the program, click **Quit** in the page: closing the tab does not stop it.
 
 Runs are published as public.
 A run without a reliable cargo copy is not sent: it is stored in `incomplete/`.

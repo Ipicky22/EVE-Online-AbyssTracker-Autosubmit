@@ -12,7 +12,7 @@ import (
 
 // version is the name of the GitHub release this build belongs to. Change it before each release:
 // the release tag must be the same.
-var version = "v0.1.0-beta.3"
+var version = "v0.1.0-beta.4"
 
 // /releases/latest skips pre-releases, so the newest release is taken from the list instead.
 const releasesAPI = "https://api.github.com/repos/Ipicky22/EVE-Online-AbyssTracker-Autosubmit/releases?per_page=1"

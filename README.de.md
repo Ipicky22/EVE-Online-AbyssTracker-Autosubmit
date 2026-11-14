@@ -17,6 +17,7 @@ Es greift nie in den EVE-Client ein: Es liest nur das Lokal-Chatlog, das EVE auf
 3. Kopiere deinen Frachtraum (`Strg+A`, `Strg+C`) vor dem ersten Run.
 4. Kopiere nach jedem Run deinen Frachtraum erneut: Der Run wird an Abyss Tracker gesendet.
 5. Kopiere nach einem Systemwechsel oder dem Andocken deinen Frachtraum erneut, bevor du den nächsten Run startest.
+6. Um das Programm zu beenden, klicke auf der Seite auf **Beenden**: Das Schließen des Tabs beendet es nicht.
 
 Runs werden öffentlich veröffentlicht.
 Ein Run ohne verlässliche Frachtraum-Kopie wird nicht gesendet: Er wird in `incomplete/` abgelegt.
